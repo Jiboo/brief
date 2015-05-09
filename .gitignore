@@ -1,0 +1,4 @@
+model/*
+!model/repo.fbs
+.idea/*
+!.idea/codeStyleSettings.xml

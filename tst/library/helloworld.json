@@ -1,0 +1,25 @@
+{
+	name: "helloworld",
+	tasks: {
+    libhello: {
+      type: "library",
+      toolchain: "clang",
+      sources: [
+        "library.cpp"
+      ],
+      headers: [
+        "library.h"
+      ]
+    },
+    helloworld: {
+      type: "application",
+      toolchain: "clang",
+      dependencies: [
+        {name: "libhello"}
+      ],
+      sources: [
+        "hello.cpp"
+      ]
+    }
+  }
+}

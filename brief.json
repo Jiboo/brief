@@ -1,0 +1,54 @@
+{
+	name: "brief",
+	url: "github.com/jiboo/brief",
+	description: {
+		summary: "Yet another build system",
+		home: "https://xkcd.com/927/",
+		licenses: {
+      GPLv3: "LICENSE.md"
+		}
+	},
+
+	tasks: {
+    genmodel: {
+      toolchain: "flatc",
+      sources: [
+        "model/repo.fbs"
+      ],
+      headers: [
+        "model/repo_generated.h"
+      ]
+    }
+  },
+
+	exports: {
+    libbrief: {
+      type: "library",
+      toolchain: "clang",
+      dependencies: [
+        {name: "flatbuffers"},
+        {name: "genmodel"}
+      ],
+      includeDirs: [
+        "inc",
+        "model"
+      ],
+      sources: [
+        "src/*.cpp"
+      ],
+      headers: [
+        "inc/brief/*.hpp"
+      ],
+    },
+    brief: {
+      type: "application",
+      toolchain: "clang",
+      dependencies: [
+        {name: "libbrief"}
+      ],
+      sources: [
+        "src/brief.cpp"
+      ]
+    }
+  }
+}
