@@ -1,6 +1,6 @@
 {
-	name: "helloworld",
-	tasks: {
+  name: "helloworld",
+  tasks: {
     helloworld: {
       type: "application",
       toolchain: "clang",

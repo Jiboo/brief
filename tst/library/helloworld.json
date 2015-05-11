@@ -1,6 +1,6 @@
 {
-	name: "helloworld",
-	tasks: {
+  name: "helloworld",
+  tasks: {
     libhello: {
       type: "library",
       toolchain: "clang",

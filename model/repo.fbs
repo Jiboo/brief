@@ -1,259 +1,259 @@
 namespace brief;
 
 table License (map_entry) {
-	/// License name
-	name: string (key);
+  /// License name
+  name: string (key);
 
-	/// Repo local path to the full license string
-	path: string;
+  /// Repo local path to the full license string
+  path: string;
 }
 
 table Description {
-	/// Displayed name (like Google Test and not gtest)
-	/// Defaults to "name", being either from Task's maps keys or Repository
-	title: string;
+  /// Displayed name (like Google Test and not gtest)
+  /// Defaults to "name", being either from Task's maps keys or Repository
+  title: string;
 
-	/// One line TLDR of the purpose of the code in this repo
-	/// Max size = 120 - sizeof(title) - sizeof(name) + 5
-	/// (name being either from Task's maps keys or Repository)
-	summary: string;
+  /// One line TLDR of the purpose of the code in this repo
+  /// Max size = 120 - sizeof(title) - sizeof(name) + 5
+  /// (name being either from Task's maps keys or Repository)
+  summary: string;
 
-	/// Homepage URL
-	home: string;
+  /// Homepage URL
+  home: string;
 
-	/// Bug reporting URL
-	bugs: string;
+  /// Bug reporting URL
+  bugs: string;
 
-	/// A repo local path to an icon image file (svg preferred)
-	icon: string;
+  /// A repo local path to an icon image file (svg preferred)
+  icon: string;
 
-	/// URL to icon image files (preferably PNG)
-	/// You can add extra descriptors matching component 4. of https://html.spec.whatwg.org////image-candidate-string
-	publicIcons: [string];
+  /// URL to icon image files (preferably PNG)
+  /// You can add extra descriptors matching component 4. of https://html.spec.whatwg.org////image-candidate-string
+  publicIcons: [string];
 
-	/// License applicable for this repo (usage of applications and/or libraries)
-	licenses: [License];
+  /// License applicable for this repo (usage of applications and/or libraries)
+  licenses: [License];
 }
 
 enum TaskType : byte {
-	/// Export task that implements a specification like libc, opengl...
-	/// It exposes nothing but dependencies to implementation.
-	/// It's the only task that won't fail on install if another task
-	/// is already exposed with this name, you can set preferred impl in config file.
-	specification,
+  /// Export task that implements a specification like libc, opengl...
+  /// It exposes nothing but dependencies to implementation.
+  /// It's the only task that won't fail on install if another task
+  /// is already exposed with this name, you can set preferred impl in config file.
+  specification,
 
-	/// Export task used by other tasks that depends on it.
-	library,
+  /// Export task used by other tasks that depends on it.
+  library,
 
-	/// Export task can be run from console or desktop env.
-	application,
+  /// Export task can be run from console or desktop env.
+  application,
 
-	/// Export task used for listing tasks available for install.
-	/// When installed, all it's .repo files are added to the local database of
-	/// known repos, that is used for search by the repo manager.
-	packages,
+  /// Export task used for listing tasks available for install.
+  /// When installed, all it's .repo files are added to the local database of
+  /// known repos, that is used for search by the repo manager.
+  packages,
 
-	/// Task that is a set of tasks (can be in exports).
-	/// It exposes nothing but dependencies on other tasks.
-	/// Used for bundling tasks together and make groups (like "dev" depends on clang, musl, ..)
-	/// Bundles can depend on other bundles.
-	bundle,
+  /// Task that is a set of tasks (can be in exports).
+  /// It exposes nothing but dependencies on other tasks.
+  /// Used for bundling tasks together and make groups (like "dev" depends on clang, musl, ..)
+  /// Bundles can depend on other bundles.
+  bundle,
 
-	/// Task that can build, install and test other tasks.
-	/// It exposes a plugin or a toolchain script, that takes a set of tasks as input to different entry points.
-	toolchain
+  /// Task that can build, install and test other tasks.
+  /// It exposes a plugin or a toolchain script, that takes a set of tasks as input to different entry points.
+  toolchain
 }
 
 /// Filters are used to enable a task if only certain criteria are met.
 /// If two tasks with the same name collide, they must have different filters.
 table TaskFilters {
-	/// Whitelist of archs, default to all
-	archs: [string];
+  /// Whitelist of archs, default to all
+  archs: [string];
 
-	/// Whitelist of platforms, defaults to all
-	platforms: [string];
+  /// Whitelist of platforms, defaults to all
+  platforms: [string];
 
-	/// Used to limit this task in a specific range of tags, defaults to first tag
-	minTag: string;
+  /// Used to limit this task in a specific range of tags, defaults to first tag
+  minTag: string;
 
-	/// Used to limit this task in a specific range of tags, defaults to last tag
-	maxTag: string;
+  /// Used to limit this task in a specific range of tags, defaults to last tag
+  maxTag: string;
 }
 
 table Dependency {
-	/// The name of a task
-	name: string;
+  /// The name of a task
+  name: string (key);
 
-	/// Tag as per defined in dependency repo description, a list of tags either custom or mapped to repo internal tags.
-	tag: string;
+  /// Tag as per defined in dependency repo description, a list of tags either custom or mapped to repo internal tags.
+  tag: string;
 
-	/// Preferred linking to this library (embark the code instead of using a system shareable code)
-	/// Will also link it's dependencies statically, if not overridden somewhere.
-	static_link: bool;
+  /// Preferred linking to this library (embark the code instead of using a system shareable code)
+  /// Will also link it's dependencies statically, if not overridden somewhere.
+  static_link: bool;
 
-	/// Add dependency on *optional*, *experimental* or *flavor* tasks from the targeted task
-	/// For example you could depend on a "debug" flavor, or "filesystem" of boost
-	/// (Although i'd recommend splitting boost libs in a task for each, instead of a mega-task, but both could work)
-	require: [string];
+  /// Add dependency on *optional*, *experimental* or *flavor* tasks from the targeted task
+  /// For example you could depend on a "debug" flavor, or "filesystem" of boost
+  /// (Although i'd recommend splitting boost libs in a task for each, instead of a mega-task, but both could work)
+  require: [string];
 }
 
 /// Used to define maps of string => task
 table NamedTask (map_entry) {
-	name: string (key);
-	task: Task;
+  name: string (key);
+  task: Task;
 }
 
 /// Optimisation strategy
 enum Optimization : byte {
-	size,
-	speed,
-	none
+  size,
+  speed,
+  none
 }
 
 /// Used in Task to exports values from the build system to the preprocessor/compiler
 /// Used in Repository to define constants that can be used in brief.
 table Constant (map_entry) {
-	name: string (key);
+  name: string (key);
 
-	/// You can only pass strings, you'll have to parse it on code side.
-	/// You can use env variables, use the cmake's ${syntax}.
-	/// You can use brief constants, use this &{syntax} or you can define an optional namespace to go fetch the value
-	/// in one of your dependencies &{dependency_repo_name::key}.
-	/// Plugins can register special values, maybe something like "&{git::branch}" or a "&{__compiler::version}".
-	value: string;
+  /// You can only pass strings, you'll have to parse it on code side.
+  /// You can use env variables, use the cmake's ${syntax}.
+  /// You can use brief constants, use this &{syntax} or you can define an optional namespace to go fetch the value
+  /// in one of your dependencies &{dependency_repo_name::key}.
+  /// Plugins can register special values, maybe something like "&{git::branch}" or a "&{__compiler::version}".
+  value: string;
 }
 
 table Task {
-	/// Inherits from another task.
-	/// Maps&Lists fields from *the specified task* will be merged into *this* one.
-	/// For other fields:
-	/// 	- *this* task values defined are kept intact.
-	///	- Fields defined in *the specified task* and not in *this* task are copied.
-	inherits: string;
+  /// Inherits from another task.
+  /// Maps&Lists fields from *the specified task* will be merged into *this* one.
+  /// For other fields:
+  ///   - *this* task values defined are kept intact.
+  ///  - Fields defined in *the specified task* and not in *this* task are copied.
+  inherits: string;
 
-	/// See TaskType
-	type: TaskType;
+  /// See TaskType
+  type: TaskType;
 
-	/// Used by tools to pick the best task between two having the same name, see the associated table.
-	filters: TaskFilters;
+  /// Used by tools to pick the best task between two having the same name, see the associated table.
+  filters: TaskFilters;
 
-	/// List of tasks on which this one depends. You can depend on:
-	///		- exports in this repo_desc and of all installed repo desc
-	///		- tasks defined in this repo_desc
-	///		- tasks defined in repo_desc of repos on which this task depends
-	///		- optionals and features defined in tasks on which this task depends
-	dependencies: [Dependency];
+  /// List of tasks on which this one depends. You can depend on:
+  ///    - exports in this repo_desc and of all installed repo desc
+  ///    - tasks defined in this repo_desc
+  ///    - tasks defined in repo_desc of repos on which this task depends
+  ///    - optionals and features defined in tasks on which this task depends
+  dependencies: [Dependency];
 
-	/// Set of tasks describing features enabled only if all of their dependencies are installed.
-	optionals: [NamedTask];
+  /// Set of tasks describing features enabled only if all of their dependencies are installed.
+  optionals: [NamedTask];
 
-	/// Set of tasks describing experimental features disabled by default
-	experimental: [NamedTask];
+  /// Set of tasks describing experimental features disabled by default
+  experimental: [NamedTask];
 
-	/// Set of flavors describing different ways to build this task (debug/release or paid/free for example).
-	/// Debug/Release flavors are automagically filled by the toolchain but can be overridden.
-	flavors: [NamedTask];
+  /// Set of flavors describing different ways to build this task (debug/release or paid/free for example).
+  /// Debug/Release flavors are automagically filled by the toolchain but can be overridden.
+  flavors: [NamedTask];
 
-	/// List the URI of patches applied to the repo, must point to a "raw diff", not html content.
-	///	- repo:<repo local path> for patches on the repo.
-	///	- others URI will be fed to curl (http, https, ftp, ..).
-	patches: [string];
+  /// List the URI of patches applied to the repo, must point to a "raw diff", not html content.
+  ///  - repo:<repo local path> for patches on the repo.
+  ///  - others URI will be fed to curl (http, https, ftp, ..).
+  patches: [string];
 
-	/// Toolchain used to build this task.
-	toolchain: string;
+  /// Toolchain used to build this task.
+  toolchain: string;
 
-	/// Used as a argc/argv to pass obscure data to toolchain
-	toolchain_flags: [string];
+  /// Used as a argc/argv to pass obscure data to toolchain
+  toolchain_flags: [string];
 
-	/// What language standard you want to enforce on the toolchain.
-	/// For C/C++ toolchain could be c11, c++11... Java could be 1.7, 1.8...
-	/// Refer to toolchain documentation.
-	standard: string;
+  /// What language standard you want to enforce on the toolchain.
+  /// For C/C++ toolchain could be c11, c++11... Java could be 1.7, 1.8...
+  /// Refer to toolchain documentation.
+  standard: string;
 
-	/// What optimisation strategy you want to enforce on the toolchain.
-	/// Default values supplied by the toolchain.
-	optimize: Optimization;
+  /// What optimisation strategy you want to enforce on the toolchain.
+  /// Default values supplied by the toolchain.
+  optimize: Optimization;
 
-	/// Used by the most toolchains to build or install this task
-	/// You can use wildcards, * for any file in this directory, ** for any file in this directory and subdirectories
-	sources: [string];
+  /// Used by the most toolchains to build or install this task
+  /// You can use wildcards, * for any file in this directory, ** for any file in this directory and subdirectories
+  sources: [string];
 
-	/// Point to a list of directories in which the compiler should search when using include/imports directive in source code.
-	includeDirs: [string];
+  /// Point to a list of directories in which the compiler should search when using include/imports directive in source code.
+  includeDirs: [string];
 
-	/// Headers that will get installed
-	/// Default to all files in includePaths
-	headers: [string];
+  /// Headers that will get installed
+  /// Default to all files in includePaths
+  headers: [string];
 
-	/// Symbols from the build system exposed to the source code during compilation (macros for cpp BuildConfig for Android...).
-	symbols: [Constant];
+  /// Symbols from the build system exposed to the source code during compilation (macros for cpp BuildConfig for Android...).
+  symbols: [Constant];
 
-	/// General info about this task
-	description: Description;
+  /// General info about this task
+  description: Description;
 }
 
 /// Used to point to a state of the repo (a combination of revision/branch/tag)
 /// If you don't provide custom tags, we'll try to use the ones on the repo
 table CustomTag {
-	/// Name used to refer to this custom tag
-	name: string (key);
+  /// Name used to refer to this custom tag
+  name: string (key);
 
-	/// For git, that would be commit hash
-	id: string;
+  /// For git, that would be commit hash
+  id: string;
 
-	/// If a revision might be in multiple branch, you can pair an id/tag to a branch.
-	/// If pointing to a branch only (id/tag omitted) then last commit is assumed.
-	branch: string;
+  /// If a revision might be in multiple branch, you can pair an id/tag to a branch.
+  /// If pointing to a branch only (id/tag omitted) then last commit is assumed.
+  branch: string;
 
-	/// Use a repo internal tag instead of a revision id
-	/// This is useful to override some crazy tag names or bad cvs migration/mirror.
-	tag: string;
+  /// Use a repo internal tag instead of a revision id
+  /// This is useful to override some crazy tag names or bad cvs migration/mirror.
+  tag: string;
 }
 
 /// Description of a source code repository, and how to build and test it.
 table Repository {
-	/// Abbreviated name (like gtest and not Google Test)
-	/// Max size = 64
-	name: string;
+  /// Abbreviated name (like gtest and not Google Test)
+  /// Max size = 64
+  name: string;
 
-	/// Repository URL, will be used as input to the CVS clone operation
-	url: string;
+  /// Repository URL, will be used as input to the CVS clone operation
+  url: string;
 
-	/// Constants referenced in this repo, you can use thus values in any strings of this file.
-	/// See Constant.
-	constants: [Constant];
+  /// Constants referenced in this repo, you can use thus values in any strings of this file.
+  /// See Constant.
+  constants: [Constant];
 
-	/// If this field is not provided, it will be filled with pointers from the cvs.
-	/// Useful if the repo tags aren't reliable (a bad mirroring or something).
-	tags: [CustomTag];
+  /// If this field is not provided, it will be filled with pointers from the cvs.
+  /// Useful if the repo tags aren't reliable (a bad mirroring or something).
+  tags: [CustomTag];
 
-	/// Estimated in KiB, on a 4k sector disk
-	repoSize: uint;
+  /// Estimated in KiB, on a 4k sector disk
+  repoSize: uint;
 
-	/// Estimated in KiB, on a 4k sector disk
-	buildSize: uint;
+  /// Estimated in KiB, on a 4k sector disk
+  buildSize: uint;
 
-	/// Estimated in seconds, relative to musl compile time on same machine
-	buildTime: float;
+  /// Estimated in seconds, relative to musl compile time on same machine
+  buildTime: float;
 
-	/// Repo local path to other description files, tasks and exports will get merged into this one.
-	/// Thus files are optional, will not even warn if missing (except in verbose mode).
-	imports: [string];
+  /// Repo local path to other description files, tasks and exports will get merged into this one.
+  /// Thus files are optional, will not even warn if missing (except in verbose mode).
+  imports: [string];
 
-	/// List of tasks needed to build everything
-	all: [string];
+  /// List of tasks needed to build everything
+  all: [string];
 
-	/// List of tasks with application type, that are needed to test the repo.
-	test: [string];
+  /// List of tasks with application type, that are needed to test the repo.
+  test: [string];
 
-	/// Tasks defined locally for this file and it's dependencies
-	tasks: [NamedTask];
+  /// Tasks defined locally for this file and it's dependencies
+  tasks: [NamedTask];
 
-	/// Tasks that are visible system wide and that can be installed
-	exports: [NamedTask];
+  /// Tasks that are visible system wide and that can be installed
+  exports: [NamedTask];
 
-	/// General info about the repo
-	description: Description;
+  /// General info about the repo
+  description: Description;
 }
 
 root_type Repository;

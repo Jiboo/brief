@@ -16,15 +16,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#pragma once
+#include <gtest/gtest.h>
 
-#include "context.hpp"
-
-namespace brief {
-
-class Plugin {
-  virtual bool load(Context *ctx) = 0;
-  virtual bool unload(Context *ctx) = 0;
-};
-
-}  // namespace brief
+int main(int argc, char **argv) {
+  ::testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
+}
