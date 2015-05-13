@@ -1,23 +1,23 @@
 {
-  name: "helloworld",
-  tasks: {
-    libhello: {
-      type: "library",
-      toolchain: "clang",
-      sources: [
+  "name": "helloworld",
+  "tasks": {
+    "libhello": {
+      "type": "library",
+      "toolchain": "clang",
+      "sources": [
         "library.cpp"
       ],
-      headers: [
+      "headers": [
         "library.h"
       ]
     },
-    helloworld: {
-      type: "application",
-      toolchain: "clang",
-      dependencies: [
-        {name: "libhello"}
+    "helloworld": {
+      "type": "application",
+      "toolchain": "clang",
+      "dependencies": [
+        {"name": "libhello"}
       ],
-      sources: [
+      "sources": [
         "hello.cpp"
       ]
     }

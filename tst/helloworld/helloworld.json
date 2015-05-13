@@ -1,10 +1,10 @@
 {
-  name: "helloworld",
-  tasks: {
-    helloworld: {
-      type: "application",
-      toolchain: "clang",
-      sources: [
+  "name": "helloworld",
+  "tasks": {
+    "helloworld": {
+      "type": "application",
+      "toolchain": "clang",
+      "sources": [
         "hello.cpp"
       ]
     }

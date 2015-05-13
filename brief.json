@@ -1,56 +1,50 @@
 {
-  name:"brief",
-  url:"github.com/jiboo/brief",
-  description:{
-    summary:"Yet another build system",
-    home:"https://xkcd.com/927/",
-    licenses:{
-      GPLv3:"LICENSE.md"
+  "name":"brief",
+  "url":"github.com/jiboo/brief",
+  "description":{
+    "summary":"Yet another build system",
+    "home":"https://xkcd.com/927/",
+    "licenses":{
+      "GPLv3":"LICENSE.md"
     }
   },
-  tasks:{
-    genmodel:{
-      toolchain:"flatc",
-      sources:[
+  "tasks":{
+    "genmodel":{
+      "toolchain":"flatc",
+      "sources":[
         "model/repo.fbs"
       ],
-      headers:[
+      "headers":[
         "model/repo_generated.h"
       ]
     }
   },
-  exports:{
-    libbrief:{
-      type:"library",
-      toolchain:"clang",
-      dependencies:[
-        {
-          name:"flatbuffers"
-        },
-        {
-          name:"genmodel"
-        }
+  "exports":{
+    "libbrief":{
+      "type":"library",
+      "toolchain":"clang",
+      "dependencies":[
+        {"name":"flatbuffers"},
+        {"name":"genmodel"}
       ],
-      includeDirs:[
+      "includeDirs":[
         "inc",
         "model"
       ],
-      sources:[
+      "sources":[
         "src/*.cpp"
       ],
-      headers:[
+      "headers":[
         "inc/brief/*.hpp"
       ]
     },
-    brief:{
-      type:"application",
-      toolchain:"clang",
-      dependencies:[
-        {
-          name:"libbrief"
-        }
+    "brief":{
+      "type":"application",
+      "toolchain":"clang",
+      "dependencies":[
+        {"name":"libbrief"}
       ],
-      sources:[
+      "sources":[
         "src/brief.cpp"
       ]
     }
