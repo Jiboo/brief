@@ -52,14 +52,14 @@ TEST(JsonReader, Parser) {
   ASSERT_EQ(2, m["b"]);
 }
 
-struct MyType {
+struct JsonType {
   int a_;
   float b_;
-  bool operator ==(const MyType &_other) const {
+  bool operator ==(const JsonType &_other) const {
     return a_ == _other.a_ && b_ == _other.b_;
   }
 };
-BRIEF_JSON_PARSE_START(MyType, int, a_, "a")
+BRIEF_JSON_PARSE_START(JsonType, int, a_, "a")
 BRIEF_JSON_PARSE_ARG(float, b_, "b")
 BRIEF_JSON_PARSE_STOP()
 
@@ -67,6 +67,6 @@ TEST(JsonReader, CustomTypes) {
   const char *test = "{\"a\": 42, \"b\": 3.14}";
   brief::json::Tokenizer tokenizer(test, test + strlen(test));
 
-  MyType expected = {42, 3.14};
-  ASSERT_EQ(expected, brief::json::parse<MyType>(tokenizer));
+  JsonType expected = {42, 3.14};
+  ASSERT_EQ(expected, brief::json::parse<JsonType>(tokenizer));
 }

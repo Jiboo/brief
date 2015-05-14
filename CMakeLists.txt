@@ -17,6 +17,8 @@ set(LIBBRIEF_HEADERS
 #  inc/brief/vcs.hpp
 #  inc/brief/toolchain.hpp
 #  inc/brief/plugin.hpp
+  inc/brief/json.hpp
+  inc/brief/msgpack.hpp
 )
 set(LIBBRIEF_SOURCES
 #  src/context.cpp
@@ -33,9 +35,10 @@ set(BRIEF_SOURCES
 set(TESTS_SOURCES
   tst/unit/main.cpp
   tst/unit/json.cpp
+  tst/unit/msgpack.cpp
 #  tst/unit/context.cpp
 )
-add_executable(tests ${TESTS_SOURCES})
+add_executable(tests ${LIBBRIEF_HEADERS} ${TESTS_SOURCES})
 target_link_libraries(tests gtest)
 
 add_test(NAME unittests COMMAND tests)
