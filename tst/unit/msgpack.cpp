@@ -24,7 +24,7 @@ TEST(MsgPack, Primitives) {
   const int kCount = 1000;
   std::stringstream output;
   std::string str = "hello world";
-  for(int j = 0; j < kCount; j++) {
+  for (int j = 0; j < kCount; j++) {
     brief::msgpack::writer<int>::write(output, j * 42);
     brief::msgpack::writer<double>::write(output, j * 3.14);
     brief::msgpack::writer<std::string>::write(output, str);
@@ -34,7 +34,7 @@ TEST(MsgPack, Primitives) {
   double d;
   std::string s;
   std::stringstream input(output.str());
-  for(int j = 0; j < kCount; j++) {
+  for (int j = 0; j < kCount; j++) {
     brief::msgpack::reader<int>::read(input, i);
     brief::msgpack::reader<double>::read(input, d);
     brief::msgpack::reader<std::string>::read(input, s);
@@ -47,7 +47,7 @@ TEST(MsgPack, Primitives) {
 TEST(MsgPack, Arrays) {
   const int kCount = 1000;
   std::vector<int> data(kCount);
-  for(int i = 0; i < kCount; i++)
+  for (int i = 0; i < kCount; i++)
     data[i] = i;
 
   std::stringstream output;
@@ -63,7 +63,7 @@ TEST(MsgPack, Arrays) {
 TEST(MsgPack, Maps) {
   const int kCount = 1000;
   std::unordered_map<int, int> data;
-  for(int i = 0; i < kCount; i++)
+  for (int i = 0; i < kCount; i++)
     data[i] = i;
 
   std::stringstream output;
@@ -80,18 +80,25 @@ struct MsgpackType {
   bool b_;
   int i_;
   float f_;
+  std::experimental::optional<int> o_;
   bool operator ==(const MsgpackType &_other) const {
-    return b_ == _other.b_ && i_ == _other.i_ && f_ == _other.f_;
+    return b_ == _other.b_ && i_ == _other.i_ && f_ == _other.f_ && o_ == _other.o_;
   }
 };
-BRIEF_MSGPACK(MsgpackType, _.b_, _.i_, _.f_)
+BRIEF_MSGPACK(MsgpackType, _.b_, _.i_, _.f_, _.o_)
 
 TEST(MsgPack, CustomTypes) {
   MsgpackType test {false, 42, 3.14};
   std::stringstream output;
   brief::msgpack::writer<MsgpackType>::write(output, test);
 
-  std::stringstream input(output.str());
+  test.o_ = 15;
+  std::stringstream outputWithOptional;
+  brief::msgpack::writer<MsgpackType>::write(outputWithOptional, test);
+
+  ASSERT_GE(outputWithOptional.str().size(), output.str().size());
+
+  std::stringstream input(outputWithOptional.str());
   MsgpackType read;
   brief::msgpack::reader<MsgpackType>::read(input, read);
 

@@ -42,12 +42,12 @@ TEST(JsonReader, Parser) {
   ASSERT_FLOAT_EQ(3.14, brief::json::parse<float>(tokenizer));
   ASSERT_EQ("test", brief::json::parse<std::string>(tokenizer));
 
-  std::vector<int> v = brief::json::parse_vector<int>(tokenizer);
+  std::vector<int> v = brief::json::parse<std::vector<int>>(tokenizer);
   ASSERT_EQ(1, v[0]);
   ASSERT_EQ(2, v[1]);
   ASSERT_EQ(4, v[2]);
 
-  std::unordered_map<std::string, int> m = brief::json::parse_map<std::string, int>(tokenizer);
+  std::unordered_map<std::string, int> m = brief::json::parse<std::unordered_map<std::string, int>>(tokenizer);
   ASSERT_EQ(1, m["a"]);
   ASSERT_EQ(2, m["b"]);
 }
@@ -59,9 +59,9 @@ struct JsonType {
     return a_ == _other.a_ && b_ == _other.b_;
   }
 };
-BRIEF_JSON_PARSE_START(JsonType, int, a_, "a")
-BRIEF_JSON_PARSE_ARG(float, b_, "b")
-BRIEF_JSON_PARSE_STOP()
+BRIEF_JSON_START(JsonType, int, a_, "a")
+BRIEF_JSON_ARG(float, b_, "b")
+BRIEF_JSON_STOP()
 
 TEST(JsonReader, CustomTypes) {
   const char *test = "{\"a\": 42, \"b\": 3.14}";

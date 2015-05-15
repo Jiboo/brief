@@ -29,6 +29,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include <experimental/optional>
 #include <experimental/string_view>
 
 namespace brief {
@@ -280,11 +281,33 @@ struct reader<std::tuple<TParams...>> {
   }
 };
 
-}  // namespace msgpack
-}  // namespace brief
+template <typename T>
+struct writer<std::experimental::optional<T>> {
+  static void write(std::ostream &_stream, const std::experimental::optional<T> &_ref) {
+    const bool present = static_cast<bool>(_ref);
+    writer<bool>::write(_stream, present);
+    if (present)
+      writer<T>::write(_stream, _ref.value());
+  }
+};
 
-#define BRIEF_MSGPACK(TYPE, ...) \
-namespace brief { namespace msgpack { \
+template <typename T>
+struct reader<std::experimental::optional<T>> {
+  static void read(std::istream &_stream, std::experimental::optional<T> &_ref) {
+    bool present;
+    reader<bool>::read(_stream, present);
+    if (present) {
+      T val;
+      reader<T>::read(_stream, val);
+      _ref = val;
+    }
+  }
+};
+
+}  // namespace msgpack
+
+#define BRIEF_MSGPACK_INTERNAL(TYPE, ...) \
+namespace msgpack { \
 template<> \
 struct writer<TYPE> { \
   static void write(std::ostream &_stream, const TYPE &_) { \
@@ -299,4 +322,19 @@ struct reader<TYPE> { \
     reader<decltype(tuple)>::read(_stream, tuple); \
   } \
 }; \
-}  /* namespace msgpack */ } /* namespace brief */
+}  // namespace msgpack
+
+#define BRIEF_MSGPACK_FRIENDS_INTERNAL() \
+template<typename T> friend void msgpack::writer<T>::write(std::ostream&, const T&); \
+template<typename T> friend void msgpack::reader<T>::read(std::istream&, T&);
+
+}  // namespace brief
+
+#define BRIEF_MSGPACK(TYPE, ...) \
+namespace brief { \
+BRIEF_MSGPACK_INTERNAL(TYPE, __VA_ARGS__) \
+}  // namespace brief
+
+#define BRIEF_MSGPACK_FRIENDS() \
+template<typename T> friend void brief::msgpack::writer<T>::write(std::ostream&, const T&); \
+template<typename T> friend void brief::msgpack::reader<T>::read(std::istream&, T&);

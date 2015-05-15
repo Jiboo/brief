@@ -19,6 +19,10 @@ set(LIBBRIEF_HEADERS
 #  inc/brief/plugin.hpp
   inc/brief/json.hpp
   inc/brief/msgpack.hpp
+
+  inc/brief/description.hpp
+  inc/brief/task.hpp
+  inc/brief/repository.hpp
 )
 set(LIBBRIEF_SOURCES
 #  src/context.cpp
