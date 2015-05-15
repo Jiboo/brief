@@ -81,7 +81,7 @@ template <> \
 struct writer<CTYPE> { \
   static void write(std::ostream &_stream, const CTYPE &_ref) { \
     _stream.put(MSGPACK_HEADER); \
-    _stream.write(reinterpret_cast<const char*>(&_ref), sizeof (_ref)); \
+    _stream.write(reinterpret_cast<const char*>(&_ref), sizeof(_ref)); \
   } \
 }; \
 template <> \
@@ -93,7 +93,7 @@ struct reader<CTYPE> { \
       error << "expected " << #CTYPE << ", found : " << std::hex << c; \
       throw std::runtime_error(error.str()); \
     } else { \
-      _stream.read(reinterpret_cast<char*>(&_ref), sizeof (_ref)); \
+      _stream.read(reinterpret_cast<char*>(&_ref), sizeof(_ref)); \
     } \
   } \
 };
@@ -111,7 +111,7 @@ BRIEF_MSGPACK_BIND_NUMBER(double, 0xCB)
 
 void write_string(std::ostream &_stream, const char *_ref, uint16_t _size) {
   _stream.put((uint8_t) 0xDA);
-  _stream.write(reinterpret_cast<const char*>(&_size), sizeof (_size));
+  _stream.write(reinterpret_cast<const char*>(&_size), sizeof(_size));
   _stream.write(_ref, _size);
 }
 
@@ -119,9 +119,11 @@ void write_string(std::ostream &_stream, const char *_ref, uint16_t _size) {
 template <> \
 struct writer<CTYPE> { \
   static void write(std::ostream &_stream, const CTYPE &_ref) { \
-    if (_ref.size() >= (2^16)) { \
-      throw std::runtime_error("string too big, max is 2^16 bytes."); \
-    } \
+    if (_ref.size() >= (2 << 16)) { \
+      std::stringstream buf; \
+      buf << "string too big (" << _ref.size() << "), max is 2^16 bytes."; \
+      throw std::runtime_error(buf.str()); \
+    }\
     write_string(_stream, _ref.data(), (uint16_t) _ref.size()); \
   } \
 };
@@ -146,7 +148,7 @@ template <>
 struct reader<std::string> {
   static void read(std::istream &_stream, std::string &_ref) {
     const uint16_t size = read_string_header(_stream);
-    _ref.reserve(size);
+    _ref.resize(size);
     _stream.read(_ref.begin().base(), size);
   }
 };
@@ -154,7 +156,7 @@ struct reader<std::string> {
 template <typename T, typename Iter>
 void write_array(std::ostream &_stream, Iter _begin, uint16_t _size) {
   _stream.put((uint8_t) 0xDC);
-  _stream.write(reinterpret_cast<const char*>(&_size), sizeof (_size));
+  _stream.write(reinterpret_cast<const char*>(&_size), sizeof(_size));
   for (int i = 0; i < _size; i++) {
     writer<T>::write(_stream, *_begin++);
   }
@@ -173,38 +175,36 @@ uint16_t read_array_header(std::istream &_stream) {
   }
 }
 
-#define BRIEF_MSGPACK_BIND_ARRAY(CTYPE) \
-template <typename T> \
-struct writer<CTYPE<T>> { \
-  static void write(std::ostream &_stream, const CTYPE<T> &_ref) { \
-    if (_ref.size() >= (2^16)) \
-      throw std::runtime_error("string too big, max is 2^16 bytes."); \
-    write_array(_stream, std::back_inserter(_ref), (uint16_t) _ref.size()); \
-  } \
-}; \
-template <typename T> \
-struct reader<CTYPE<T>> { \
-  static void read(std::istream &_stream, CTYPE<T> &_ref) { \
-    if (_ref.size() >= (2^16)) \
-      throw std::runtime_error("string too big, max is 2^16 bytes."); \
-    const uint16_t size = read_array_header(_stream); \
-    _ref.reserve(size); \
-    for (int i = 0; i < size; i++) { \
-      reader<T>::read(_stream, _ref[i]); \
-    } \
-  } \
+template <typename T>
+struct writer<std::vector<T>> {
+  static void write(std::ostream &_stream, const std::vector<T> &_ref) {
+    if (_ref.size() >= (2 << 16)) {
+      std::stringstream buf;
+      buf << "array too big (" << _ref.size() << "), max is 2^16 elements.";
+      throw std::runtime_error(buf.str());
+    }
+    write_array<T>(_stream, _ref.begin(), (uint16_t) _ref.size());
+  }
+};
+template <typename T>
+struct reader<std::vector<T>> {
+  static void read(std::istream &_stream, std::vector<T> &_ref) {
+    const uint16_t size = read_array_header(_stream);
+    _ref.resize(size);
+    for (int i = 0; i < size; i++)
+      reader<T>::read(_stream, _ref[i]);
+  }
 };
 
-BRIEF_MSGPACK_BIND_ARRAY(std::vector)
 
 template <typename K, typename V, typename Iter>
 void write_map(std::ostream &_stream, Iter _begin, uint16_t _size) {
   _stream.put((uint8_t) 0xDE);
-  _stream.write(reinterpret_cast<const char*>(&_size), sizeof (_size));
+  _stream.write(reinterpret_cast<const char*>(&_size), sizeof(_size));
   for (int i = 0; i < _size; i++) {
-    auto it = *_begin++;
-    writer<K>::write(_stream, it->first);
-    writer<V>::write(_stream, it->second);
+    auto &it = *_begin++;
+    writer<K>::write(_stream, it.first);
+    writer<V>::write(_stream, it.second);
   }
 }
 
@@ -225,16 +225,17 @@ uint16_t read_map_header(std::istream &_stream) {
 template <typename K, typename V> \
 struct writer<CTYPE<K, V>> { \
   static void write(std::ostream &_stream, const CTYPE<K, V> &_ref) { \
-    if (_ref.size() >= (2^16)) \
-      throw std::runtime_error("string too big, max is 2^16 bytes."); \
+    if (_ref.size() >= (2 << 16))  { \
+      std::stringstream buf; \
+      buf << "map too big (" << _ref.size() << "), max is 2^16 elements."; \
+      throw std::runtime_error(buf.str()); \
+    }\
     write_map<K, V>(_stream, _ref.begin(), (uint16_t) _ref.size()); \
   } \
 }; \
 template <typename K, typename V> \
 struct reader<CTYPE<K, V>> { \
   static void read(std::istream &_stream, CTYPE<K, V> &_ref) { \
-    if (_ref.size() >= (2^16)) \
-      throw std::runtime_error("string too big, max is 2^16 bytes."); \
     const uint16_t size = read_map_header(_stream); \
     for (int i = 0; i < size; i++) { \
       K key; \
