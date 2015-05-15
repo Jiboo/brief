@@ -20,6 +20,62 @@
 
 #include <gtest/gtest.h>
 
+TEST(MsgPack, Primitives) {
+  const int kCount = 1000;
+  std::stringstream output;
+  std::string str = "hello world";
+  for(int j = 0; j < kCount; j++) {
+    brief::msgpack::writer<int>::write(output, j * 42);
+    brief::msgpack::writer<double>::write(output, j * 3.14);
+    brief::msgpack::writer<std::string>::write(output, str);
+  }
+
+  int i;
+  double d;
+  std::string s;
+  std::stringstream input(output.str());
+  for(int j = 0; j < kCount; j++) {
+    brief::msgpack::reader<int>::read(input, i);
+    brief::msgpack::reader<double>::read(input, d);
+    brief::msgpack::reader<std::string>::read(input, s);
+    ASSERT_EQ(j * 42, i);
+    ASSERT_DOUBLE_EQ(j * 3.14, d);
+    ASSERT_EQ("hello world", s);
+  }
+}
+
+TEST(MsgPack, Arrays) {
+  const int kCount = 1000;
+  std::vector<int> data(kCount);
+  for(int i = 0; i < kCount; i++)
+    data[i] = i;
+
+  std::stringstream output;
+  brief::msgpack::writer<std::vector<int>>::write(output, data);
+
+  std::vector<int> copy(kCount);
+  std::stringstream input(output.str());
+  brief::msgpack::reader<std::vector<int>>::read(input, copy);
+
+  ASSERT_EQ(data, copy);
+}
+
+TEST(MsgPack, Maps) {
+  const int kCount = 1000;
+  std::unordered_map<int, int> data;
+  for(int i = 0; i < kCount; i++)
+    data[i] = i;
+
+  std::stringstream output;
+  brief::msgpack::writer<std::unordered_map<int, int>>::write(output, data);
+
+  std::unordered_map<int, int> copy;
+  std::stringstream input(output.str());
+  brief::msgpack::reader<std::unordered_map<int, int>>::read(input, copy);
+
+  ASSERT_EQ(data, copy);
+}
+
 struct MsgpackType {
   bool b_;
   int i_;
@@ -30,7 +86,7 @@ struct MsgpackType {
 };
 BRIEF_MSGPACK(MsgpackType, _.b_, _.i_, _.f_)
 
-TEST(MsgPackReader, CustomTypes) {
+TEST(MsgPack, CustomTypes) {
   MsgpackType test {false, 42, 3.14};
   std::stringstream output;
   brief::msgpack::writer<MsgpackType>::write(output, test);
