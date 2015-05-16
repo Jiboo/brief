@@ -23,8 +23,6 @@
 #include <stdexcept>
 #include <string>
 
-#include "repo_generated.h"
-
 namespace brief {
 
 class Context;
@@ -49,9 +47,9 @@ class Toolchain {
  public:
   using Factory = std::function<std::shared_ptr<Toolchain>(Context&)>;
 
-  virtual void build(const std::string &task, const std::initializer_list<std::string> &flavors) = 0;
-  virtual void test(const std::string &task) = 0;
-  virtual void install(const std::string &task) = 0;
+  virtual void build(const std::string &_task, const std::initializer_list<std::string> &_flavors) = 0;
+  virtual void test(const std::string &_task) = 0;
+  virtual void install(const std::string &_task) = 0;
 };
 
 }  // namespace brief

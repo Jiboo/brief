@@ -23,8 +23,8 @@
 namespace brief {
 
 class Plugin {
-  virtual bool load(Context *ctx) = 0;
-  virtual bool unload(Context *ctx) = 0;
+  virtual bool load(Context &_ctx) = 0;
+  virtual bool unload(Context &_ctx) = 0;
 };
 
 }  // namespace brief

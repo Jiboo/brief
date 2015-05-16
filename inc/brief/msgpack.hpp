@@ -32,8 +32,9 @@
 #include <experimental/optional>
 #include <experimental/string_view>
 
+#include <boost/preprocessor.hpp>
+
 namespace brief {
-namespace msgpack {
 
 /**
  * Non conformant implementation, we don't need to share messages, it's just for caching and faster parsing than json.
@@ -42,28 +43,20 @@ namespace msgpack {
  */
 
 template <typename T>
-struct writer {
+struct msgpack {
   static void write(std::ostream &_stream, const T &_ref) {
     throw std::runtime_error(std::string("can't put a ") + typeid(T).name());
   }
-};
-
-template <typename T>
-struct reader {
   static void read(std::istream &_stream, T &_ref) {
     throw std::runtime_error(std::string("can't peek a ") + typeid(T).name());
   }
 };
 
 template <>
-struct writer<bool> {
+struct msgpack<bool> {
   static void write(std::ostream &_stream, const bool &_ref) {
     _stream.put(_ref ? (uint8_t) 0xC3 : (uint8_t) 0xC2);
   }
-};
-
-template <>
-struct reader<bool> {
   static void read(std::istream &_stream, bool &_ref) {
     auto c = _stream.get();
     switch (c) {
@@ -78,26 +71,23 @@ struct reader<bool> {
 };
 
 #define BRIEF_MSGPACK_BIND_NUMBER(CTYPE, MSGPACK_HEADER) \
-template <> \
-struct writer<CTYPE> { \
-  static void write(std::ostream &_stream, const CTYPE &_ref) { \
-    _stream.put(MSGPACK_HEADER); \
-    _stream.write(reinterpret_cast<const char*>(&_ref), sizeof(_ref)); \
-  } \
-}; \
-template <> \
-struct reader<CTYPE> { \
-  static void read(std::istream &_stream, CTYPE &_ref) { \
-    auto c = _stream.get(); \
-    if (c != MSGPACK_HEADER) { \
-      std::stringstream error; \
-      error << "expected " << #CTYPE << ", found : " << std::hex << c; \
-      throw std::runtime_error(error.str()); \
-    } else { \
-      _stream.read(reinterpret_cast<char*>(&_ref), sizeof(_ref)); \
+  template <> \
+  struct msgpack<CTYPE> { \
+    static void write(std::ostream &_stream, const CTYPE &_ref) { \
+      _stream.put(MSGPACK_HEADER); \
+      _stream.write(reinterpret_cast<const char*>(&_ref), sizeof(_ref)); \
     } \
-  } \
-};
+    static void read(std::istream &_stream, CTYPE &_ref) { \
+      auto c = _stream.get(); \
+      if (c != MSGPACK_HEADER) { \
+        std::stringstream error; \
+        error << "expected " << #CTYPE << ", found : " << std::hex << c; \
+        throw std::runtime_error(error.str()); \
+      } else { \
+        _stream.read(reinterpret_cast<char*>(&_ref), sizeof(_ref)); \
+      } \
+    } \
+  };
 
 BRIEF_MSGPACK_BIND_NUMBER(uint8_t, 0xCC)
 BRIEF_MSGPACK_BIND_NUMBER(uint16_t, 0xCD)
@@ -110,29 +100,13 @@ BRIEF_MSGPACK_BIND_NUMBER(int64_t, 0xD3)
 BRIEF_MSGPACK_BIND_NUMBER(float, 0xCA)
 BRIEF_MSGPACK_BIND_NUMBER(double, 0xCB)
 
-void write_string(std::ostream &_stream, const char *_ref, uint16_t _size) {
+inline void write_string(std::ostream &_stream, const char *_ref, uint16_t _size) {
   _stream.put((uint8_t) 0xDA);
   _stream.write(reinterpret_cast<const char*>(&_size), sizeof(_size));
   _stream.write(_ref, _size);
 }
 
-#define BRIEF_MSGPACK_BIND_STRING_WRITE(CTYPE) \
-template <> \
-struct writer<CTYPE> { \
-  static void write(std::ostream &_stream, const CTYPE &_ref) { \
-    if (_ref.size() >= (2 << 16)) { \
-      std::stringstream buf; \
-      buf << "string too big (" << _ref.size() << "), max is 2^16 bytes."; \
-      throw std::runtime_error(buf.str()); \
-    }\
-    write_string(_stream, _ref.data(), (uint16_t) _ref.size()); \
-  } \
-};
-
-BRIEF_MSGPACK_BIND_STRING_WRITE(std::string)
-BRIEF_MSGPACK_BIND_STRING_WRITE(std::experimental::string_view)
-
-uint16_t read_string_header(std::istream &_stream) {
+inline uint16_t read_string_header(std::istream &_stream) {
   auto c = _stream.get();
   if (c != 0xDA) {
     std::stringstream error;
@@ -146,7 +120,15 @@ uint16_t read_string_header(std::istream &_stream) {
 }
 
 template <>
-struct reader<std::string> {
+struct msgpack<std::string> {
+  static void write(std::ostream &_stream, const std::string &_ref) {
+    if (_ref.size() >= (2 << 16)) {
+      std::stringstream buf;
+      buf << "string too big (" << _ref.size() << "), max is 2^16 bytes.";
+      throw std::runtime_error(buf.str());
+    }
+    write_string(_stream, _ref.data(), (uint16_t) _ref.size());
+  }
   static void read(std::istream &_stream, std::string &_ref) {
     const uint16_t size = read_string_header(_stream);
     _ref.resize(size);
@@ -159,11 +141,11 @@ void write_array(std::ostream &_stream, Iter _begin, uint16_t _size) {
   _stream.put((uint8_t) 0xDC);
   _stream.write(reinterpret_cast<const char*>(&_size), sizeof(_size));
   for (int i = 0; i < _size; i++) {
-    writer<T>::write(_stream, *_begin++);
+    msgpack<T>::write(_stream, *_begin++);
   }
 }
 
-uint16_t read_array_header(std::istream &_stream) {
+inline uint16_t read_array_header(std::istream &_stream) {
   auto c = _stream.get();
   if (c != 0xDC) {
     std::stringstream error; \
@@ -177,7 +159,7 @@ uint16_t read_array_header(std::istream &_stream) {
 }
 
 template <typename T>
-struct writer<std::vector<T>> {
+struct msgpack<std::vector<T>> {
   static void write(std::ostream &_stream, const std::vector<T> &_ref) {
     if (_ref.size() >= (2 << 16)) {
       std::stringstream buf;
@@ -186,14 +168,11 @@ struct writer<std::vector<T>> {
     }
     write_array<T>(_stream, _ref.begin(), (uint16_t) _ref.size());
   }
-};
-template <typename T>
-struct reader<std::vector<T>> {
   static void read(std::istream &_stream, std::vector<T> &_ref) {
     const uint16_t size = read_array_header(_stream);
     _ref.resize(size);
     for (int i = 0; i < size; i++)
-      reader<T>::read(_stream, _ref[i]);
+      msgpack<T>::read(_stream, _ref[i]);
   }
 };
 
@@ -204,12 +183,12 @@ void write_map(std::ostream &_stream, Iter _begin, uint16_t _size) {
   _stream.write(reinterpret_cast<const char*>(&_size), sizeof(_size));
   for (int i = 0; i < _size; i++) {
     auto &it = *_begin++;
-    writer<K>::write(_stream, it.first);
-    writer<V>::write(_stream, it.second);
+    msgpack<K>::write(_stream, it.first);
+    msgpack<V>::write(_stream, it.second);
   }
 }
 
-uint16_t read_map_header(std::istream &_stream) {
+inline uint16_t read_map_header(std::istream &_stream) {
   auto c = _stream.get();
   if (c != 0xDE) {
     std::stringstream error; \
@@ -223,30 +202,27 @@ uint16_t read_map_header(std::istream &_stream) {
 }
 
 #define BRIEF_MSGPACK_BIND_MAP(CTYPE) \
-template <typename K, typename V> \
-struct writer<CTYPE<K, V>> { \
-  static void write(std::ostream &_stream, const CTYPE<K, V> &_ref) { \
-    if (_ref.size() >= (2 << 16))  { \
-      std::stringstream buf; \
-      buf << "map too big (" << _ref.size() << "), max is 2^16 elements."; \
-      throw std::runtime_error(buf.str()); \
-    }\
-    write_map<K, V>(_stream, _ref.begin(), (uint16_t) _ref.size()); \
-  } \
-}; \
-template <typename K, typename V> \
-struct reader<CTYPE<K, V>> { \
-  static void read(std::istream &_stream, CTYPE<K, V> &_ref) { \
-    const uint16_t size = read_map_header(_stream); \
-    for (int i = 0; i < size; i++) { \
-      K key; \
-      V value; \
-      reader<K>::read(_stream, key); \
-      reader<V>::read(_stream, value); \
-      _ref[key] = value; \
+  template <typename K, typename V> \
+  struct msgpack<CTYPE<K, V>> { \
+    static void write(std::ostream &_stream, const CTYPE<K, V> &_ref) { \
+      if (_ref.size() >= (2 << 16))  { \
+        std::stringstream buf; \
+        buf << "map too big (" << _ref.size() << "), max is 2^16 elements."; \
+        throw std::runtime_error(buf.str()); \
+      }\
+      write_map<K, V>(_stream, _ref.begin(), (uint16_t) _ref.size()); \
     } \
-  } \
-};
+    static void read(std::istream &_stream, CTYPE<K, V> &_ref) { \
+      const uint16_t size = read_map_header(_stream); \
+      for (int i = 0; i < size; i++) { \
+        K key; \
+        V value; \
+        msgpack<K>::read(_stream, key); \
+        msgpack<V>::read(_stream, value); \
+        _ref[key] = value; \
+      } \
+    } \
+  };
 
 BRIEF_MSGPACK_BIND_MAP(std::map)
 BRIEF_MSGPACK_BIND_MAP(std::unordered_map)
@@ -264,77 +240,75 @@ void for_each(Tuple&& tuple, F&& f) {
 }
 
 template<typename... TParams>
-struct writer<std::tuple<TParams...>> {
+struct msgpack<std::tuple<TParams...>> {
   static void write(std::ostream &_stream, const std::tuple<TParams...> &_ref) {
     for_each(_ref, [&_stream](const auto &x) {
-      writer<typename std::remove_cv<typename std::remove_reference<decltype(x)>::type>::type>::write(_stream, x);
+      msgpack<typename std::remove_cv<typename std::remove_reference<decltype(x)>::type>::type>::write(_stream, x);
     });
   }
-};
-
-template<typename... TParams>
-struct reader<std::tuple<TParams...>> {
   static void read(std::istream &_stream, std::tuple<TParams...> &_ref) {
     for_each(_ref, [&_stream](auto &x) {
-      reader<typename std::remove_reference<decltype(x)>::type>::read(_stream, x);
+      msgpack<typename std::remove_reference<decltype(x)>::type>::read(_stream, x);
     });
   }
 };
 
 template <typename T>
-struct writer<std::experimental::optional<T>> {
+struct msgpack<std::experimental::optional<T>> {
   static void write(std::ostream &_stream, const std::experimental::optional<T> &_ref) {
     const bool present = static_cast<bool>(_ref);
-    writer<bool>::write(_stream, present);
+    msgpack<bool>::write(_stream, present);
     if (present)
-      writer<T>::write(_stream, _ref.value());
+      msgpack<T>::write(_stream, _ref.value());
   }
-};
-
-template <typename T>
-struct reader<std::experimental::optional<T>> {
   static void read(std::istream &_stream, std::experimental::optional<T> &_ref) {
     bool present;
-    reader<bool>::read(_stream, present);
+    msgpack<bool>::read(_stream, present);
     if (present) {
       T val;
-      reader<T>::read(_stream, val);
+      msgpack<T>::read(_stream, val);
       _ref = val;
     }
   }
 };
 
-}  // namespace msgpack
+#ifndef BRIEF_PROP_TYPE
+#define BRIEF_PROP_TYPE(TUPLE) BOOST_PP_TUPLE_ELEM(3, 0, TUPLE)
+#define BRIEF_PROP_FIELD(TUPLE) BOOST_PP_TUPLE_ELEM(3, 1, TUPLE)
+#define BRIEF_PROP_NAME(TUPLE) BOOST_PP_TUPLE_ELEM(3, 2, TUPLE)
+#endif
 
-#define BRIEF_MSGPACK_INTERNAL(TYPE, ...) \
-namespace msgpack { \
-template<> \
-struct writer<TYPE> { \
-  static void write(std::ostream &_stream, const TYPE &_) { \
-    auto tuple = std::forward_as_tuple(__VA_ARGS__); \
-    writer<decltype(tuple)>::write(_stream, tuple); \
-  } \
-}; \
-template<> \
-struct reader<TYPE> { \
-  static void read(std::istream &_stream, TYPE &_) { \
-    auto tuple = std::forward_as_tuple(__VA_ARGS__); \
-    reader<decltype(tuple)>::read(_stream, tuple); \
-  } \
-}; \
-}  // namespace msgpack
+#define BRIEF_MSGPACK_PROP_CONSOLIDATE(R, SIZE, I, TUPLE) \
+  _ref. BRIEF_PROP_FIELD(TUPLE) BOOST_PP_COMMA_IF(BOOST_PP_NOT_EQUAL(I, BOOST_PP_SUB(SIZE, 1)))
+
+#define BRIEF_MSGPACK_INTERNAL(TYPE, PROPERTIES) \
+  template<> \
+  struct msgpack<TYPE> { \
+    static void write(std::ostream &_stream, const TYPE &_ref) { \
+      auto tuple = std::forward_as_tuple( \
+        BOOST_PP_LIST_FOR_EACH_I(BRIEF_MSGPACK_PROP_CONSOLIDATE, BOOST_PP_ARRAY_SIZE(PROPERTIES), \
+                                 BOOST_PP_ARRAY_TO_LIST(PROPERTIES))); \
+      msgpack<decltype(tuple)>::write(_stream, tuple); \
+    } \
+    static void read(std::istream &_stream, TYPE &_ref) { \
+      auto tuple = std::forward_as_tuple( \
+        BOOST_PP_LIST_FOR_EACH_I(BRIEF_MSGPACK_PROP_CONSOLIDATE, BOOST_PP_ARRAY_SIZE(PROPERTIES), \
+                                 BOOST_PP_ARRAY_TO_LIST(PROPERTIES))); \
+      msgpack<decltype(tuple)>::read(_stream, tuple); \
+    } \
+  };
 
 #define BRIEF_MSGPACK_FRIENDS_INTERNAL() \
-template<typename T> friend void msgpack::writer<T>::write(std::ostream&, const T&); \
-template<typename T> friend void msgpack::reader<T>::read(std::istream&, T&);
+  template<typename T> friend void msgpack<T>::write(std::ostream&, const T&); \
+  template<typename T> friend void msgpack<T>::read(std::istream&, T&);
 
 }  // namespace brief
 
-#define BRIEF_MSGPACK(TYPE, ...) \
-namespace brief { \
-BRIEF_MSGPACK_INTERNAL(TYPE, __VA_ARGS__) \
-}  // namespace brief
+#define BRIEF_MSGPACK(TYPE, PROPERTIES) \
+  namespace brief { \
+  BRIEF_MSGPACK_INTERNAL(TYPE, PROPERTIES) \
+  }  // namespace brief
 
 #define BRIEF_MSGPACK_FRIENDS() \
-template<typename T> friend void brief::msgpack::writer<T>::write(std::ostream&, const T&); \
-template<typename T> friend void brief::msgpack::reader<T>::read(std::istream&, T&);
+  template<typename T> friend void brief::msgpack<T>::write(std::ostream&, const T&); \
+  template<typename T> friend void brief::msgpack<T>::read(std::istream&, T&);

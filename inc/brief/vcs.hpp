@@ -23,8 +23,6 @@
 
 #include <boost/filesystem.hpp>
 
-#include "repo_generated.h"
-
 namespace brief {
 
 class Context;
@@ -36,11 +34,12 @@ class VCS {
  public:
   using Factory = std::function<std::shared_ptr<VCS>(Context&, std::string)>;
 
+  virtual ~VCS() {}
   virtual void reset() = 0;
-  virtual void reset(const std::string &tag) = 0;
-  virtual std::string first_tag() = 0;
-  virtual std::string last_tag() = 0;
-  virtual int compareTags(const std::string &tag1, const std::string &tag2) = 0;
+  virtual void reset(const std::string &_tag) = 0;
+  virtual std::string firstTag() = 0;
+  virtual std::string lastTag() = 0;
+  virtual int compareTags(const std::string &_tag1, const std::string &_tag2) = 0;
 
   virtual std::vector<boost::filesystem::path> diff() = 0;
 };

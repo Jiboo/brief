@@ -25,58 +25,54 @@ namespace brief {
 Context::Context() {
 }
 
-void Context::registerToolchain(const std::string &name, const Toolchain::Factory &factory) {
-  toolchainFactories.emplace(name, factory);
+void Context::registerToolchain(const std::string &_name, const Toolchain::Factory &_factory) {
+  toolchainFactories_.emplace(_name, _factory);
 }
 
-void Context::registerVCSHandling(const std::regex &pattern, const VCS::Factory &factory) {
-  vcsFactories.push_back(std::make_tuple(pattern, factory));
+void Context::registerVCSHandling(const std::regex &_pattern, const VCS::Factory &_factory) {
+  vcsFactories_.push_back(std::make_tuple(_pattern, _factory));
 }
 
-void Context::registerVar(const std::string &name, const std::string &value) {
-  knownVars.emplace(name, value);
+void Context::registerVar(const std::string &_name, const std::string &_value) {
+  knownVars_.emplace(_name, _value);
 }
 
-void Context::registerVarPrefix(const std::string &prefix, PrefixCallback cb) {
-  varPrefixes.emplace(prefix, cb);
+void Context::registerVarPrefix(const std::string &_prefix, PrefixCallback _cb) {
+  varPrefixes_.emplace(_prefix, _cb);
 }
 
-std::string Context::preprocessString(const Repository& activeRepo, const Task& activeTask, const std::string &value) {
+std::string Context::preprocessString(const Repository &_activeRepo,
+                                      const Task &_activeTask,
+                                      const std::string &_value) {
   // TODO Check for vars in the string
-  return value;
+  return _value;
 }
 
-std::string Context::lookupVar(const Repository& activeRepo, const Task& activeTask, const std::string &name) {
-  auto symbols = activeTask.symbols();
-  if (symbols) {
-    const Constant *symbol = symbols->LookupByKey(name.c_str());
-    if (symbol != nullptr)
-      return preprocessString(activeRepo, activeTask,
-                              std::string{(const char*)symbol->value()->Data(), symbol->value()->Length()});
-  }
+std::string Context::lookupVar(const Repository &_activeRepo, const Task &_activeTask, const std::string &_name) {
+  auto symbols = _activeTask.symbols_;
+  auto symbol = symbols.find(_name.c_str());
+  if (symbol != symbols.end())
+    return preprocessString(_activeRepo, _activeTask, symbol->second);
 
-  auto constants = activeTask.symbols();
-  if (constants) {
-    const Constant *constant = activeRepo.constants()->LookupByKey(name.c_str());
-    if (constant != nullptr)
-      return preprocessString(activeRepo, activeTask,
-                              std::string{(const char*)constant->value()->Data(), constant->value()->Length()});
-  }
+  auto constants = _activeRepo.constants_;
+  auto constant = constants.find(_name.c_str());
+  if (constant != constants.end())
+    return preprocessString(_activeRepo, _activeTask, constant->second);
 
-  auto known = knownVars.find(name);
-  if (known != knownVars.end())
+  auto known = knownVars_.find(_name);
+  if (known != knownVars_.end())
     return known->second;
 
-  size_t offset = name.find("::");
+  size_t offset = _name.find("::");
   if (offset != std::string::npos) {
-    auto prefix = name.substr(0, offset - 1);
-    auto it = varPrefixes.find(prefix);
-    if (it != varPrefixes.end()) {
-      return it->second(activeRepo, activeTask, name.substr(offset + 2));
+    auto prefix = _name.substr(0, offset);
+    auto it = varPrefixes_.find(prefix);
+    if (it != varPrefixes_.end()) {
+      return it->second(_activeRepo, _activeTask, _name.substr(offset + 2));
     }
   }
 
-  throw std::runtime_error("Unknown variable: " + name);
+  throw std::runtime_error("Unknown variable: " + _name);
 }
 
 }  // namespace brief

@@ -9,6 +9,8 @@ Revolves around a source code repository description:
 - General info (licenses, home and bug reporting pages, tags, ...) 
 - How to build and test the repo through *tasks*
   - Try to get the less bash possible to be more portable, simplify build files and be more tool friendly.
+    - OK, clearly doesn't respect unix philosophy, but might open new ways of doing things in build systems.
+    - Projects should specify what to build, and not how to build.
   - Tasks can depend on other tasks (from this build file, it's dependencies, or system-wide tasks: exports).
   - Tasks rely on a toolchain and a set of inputs: sources, include dirs, build system exposed symbols...
     - Toolchains are language specific, but you could have in the same repo multiple tasks with different toolchains (useful for language bindings)
@@ -37,16 +39,16 @@ tools will choose the right task depending on filters, or crash on ambiguous pic
 Folder hierarchy
 ----------------
 
-  $BRIEF_ROOT_PATH/ /* Defaults to ~/.brief */
-    toolchains/ symlinks to installed toolchains scripts
-    plugins/ symlinks to installed toolchains & cvs plugins
-    repodescs/ symlinks to installed package-repos .repo files
-    repos/ installed repos
-      <repo name>/
-    build/ temporary build files
-      <repo name>/
-        <build name>/
-          build name is a hash of revision, task name, enabled optionals and experimental features
+    $BRIEF_ROOT_PATH/ /* Defaults to ~/.brief */
+      toolchains/ symlinks to installed toolchains scripts
+      plugins/ symlinks to installed toolchains & cvs plugins
+      repodescs/ symlinks to installed package-repos .repo files
+      repos/ installed repos
+        <repo name>/
+      build/ temporary build files
+        <repo name>/
+          <build name>/
+            build name is a hash of revision, task name, enabled optionals and experimental features
 
 Planned toolchains
 ------------------

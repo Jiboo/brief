@@ -27,7 +27,7 @@
 
 #include <boost/filesystem/path.hpp>
 
-#include "repo_generated.h"
+#include "brief/repository.hpp"
 #include "brief/toolchain.hpp"
 #include "brief/vcs.hpp"
 
@@ -37,21 +37,21 @@ class Context {
  public:
   Context();
 
-  using PrefixCallback = std::function<std::string(const Repository& repo, const Task& task, const std::string &)>;
+  using PrefixCallback = std::function<std::string(const Repository &, const Task &, const std::string &_name)>;
 
-  void registerToolchain(const std::string &name, const Toolchain::Factory &factory);
-  void registerVCSHandling(const std::regex &pattern, const VCS::Factory &factory);
+  void registerToolchain(const std::string &_name, const Toolchain::Factory &_factory);
+  void registerVCSHandling(const std::regex &_pattern, const VCS::Factory &_factory);
 
-  void registerVar(const std::string &name, const std::string &value);
-  void registerVarPrefix(const std::string &prefix, PrefixCallback cb);
-  std::string preprocessString(const Repository& repo, const Task& task, const std::string &value);
-  std::string lookupVar(const Repository& repo, const Task& task, const std::string &name);
+  void registerVar(const std::string &_name, const std::string &_value);
+  void registerVarPrefix(const std::string &_prefix, PrefixCallback _cb);
+  std::string preprocessString(const Repository& _repo, const Task& _task, const std::string &_value);
+  std::string lookupVar(const Repository& _repo, const Task& _task, const std::string &_name);
 
  private:
-  std::unordered_map<std::string, Toolchain::Factory> toolchainFactories;
-  std::unordered_map<std::string, PrefixCallback> varPrefixes;
-  std::unordered_map<std::string, std::string> knownVars;
-  std::vector<std::tuple<std::regex, VCS::Factory>> vcsFactories;
+  std::unordered_map<std::string, Toolchain::Factory> toolchainFactories_;
+  std::unordered_map<std::string, PrefixCallback> varPrefixes_;
+  std::unordered_map<std::string, std::string> knownVars_;
+  std::vector<std::tuple<std::regex, VCS::Factory>> vcsFactories_;
 };
 
 }  // namespace brief

@@ -17,7 +17,8 @@
  */
 
 #include <gtest/gtest.h>
-#include <flatbuffers/flatbuffers.h>
+
+#include <string>
 
 #include "brief/context.hpp"
 
@@ -25,41 +26,21 @@ TEST(ContextTests, SimpleVars) {
   brief::Context ctx;
   ctx.registerVar("inj1", "injval1");
   ctx.registerVar("inj2", "injval2");
+  ctx.registerVarPrefix("prefix1", [](const brief::Repository &, const brief::Task &, const std::string &var) {
+    return var;
+  });
 
-  flatbuffers::FlatBufferBuilder builder;
+  brief::Repository repo;
+  repo.constants_.emplace("con1", "conval1");
+  repo.constants_.emplace("con2", "conval2");
 
-  flatbuffers::Offset<brief::Constant> symbols[2];
-  symbols[0] = brief::CreateConstant(builder, builder.CreateString("sym1"), builder.CreateString("symval1"));
-  symbols[1] = brief::CreateConstant(builder, builder.CreateString("sym2"), builder.CreateString("symval2"));
-  auto symbols_offset = builder.CreateVectorOfSortedTables(symbols, 2);
+  brief::Task task1, task2;
+  task1.symbols_.emplace("sym1", "symval1");
+  task1.symbols_.emplace("sym2", "symval2");
+  repo.tasks_.emplace("task1", task1);
+  repo.tasks_.emplace("task2", task2);
 
-  brief::TaskBuilder taskBuilder(builder);
-  taskBuilder.add_symbols(symbols_offset);
-  auto task_offset = taskBuilder.Finish();
-
-  brief::TaskBuilder emptyTaskBuilder(builder);
-  auto etask_offset = emptyTaskBuilder.Finish();
-
-  flatbuffers::Offset<brief::NamedTask> tasks[2];
-  tasks[0] = brief::CreateNamedTask(builder, builder.CreateString("task1"), task_offset);
-  tasks[1] = brief::CreateNamedTask(builder, builder.CreateString("task2"), etask_offset);
-  auto tasks_offset = builder.CreateVector(tasks, 2);
-
-  flatbuffers::Offset<brief::Constant> constants[2];
-  constants[0] = brief::CreateConstant(builder, builder.CreateString("con1"), builder.CreateString("conval1"));
-  constants[1] = brief::CreateConstant(builder, builder.CreateString("con2"), builder.CreateString("conval2"));
-  auto constants_offset = builder.CreateVectorOfSortedTables(constants, 2);
-
-  brief::RepositoryBuilder repositoryBuilder(builder);
-  repositoryBuilder.add_tasks(tasks_offset);
-  repositoryBuilder.add_constants(constants_offset);
-
-  brief::FinishRepositoryBuffer(builder, repositoryBuilder.Finish());
-
-  const brief::Repository &repo = *brief::GetRepository(builder.GetBufferPointer());
-  const brief::Task &task1 = *repo.tasks()->LookupByKey("task1")->task();
-  const brief::Task &task2 = *repo.tasks()->LookupByKey("task2")->task();
-
+  EXPECT_EQ("test1", ctx.lookupVar(repo, task1, "prefix1::test1"));
   EXPECT_EQ("injval2", ctx.lookupVar(repo, task1, "inj2"));
   EXPECT_EQ("injval1", ctx.lookupVar(repo, task1, "inj1"));
 
@@ -69,6 +50,6 @@ TEST(ContextTests, SimpleVars) {
   EXPECT_EQ("conval2", ctx.lookupVar(repo, task1, "con2"));
   EXPECT_EQ("conval1", ctx.lookupVar(repo, task1, "con1"));
 
-  EXPECT_ANY_THROW(ctx.lookupVar(repo, task2, "con1"));
+  EXPECT_ANY_THROW(ctx.lookupVar(repo, task2, "sym1"));
   EXPECT_ANY_THROW(ctx.lookupVar(repo, task1, "unknown"));
 }

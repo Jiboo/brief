@@ -34,7 +34,7 @@ class Dependency {
   BRIEF_MSGPACK_FRIENDS_INTERNAL()
   BRIEF_JSON_FRIENDS_INTERNAL()
 
- private:
+ public:
     /** The name of a task */
     std::string name_;
 
@@ -44,7 +44,7 @@ class Dependency {
 
     /** Preferred linking to this library (embark the code instead of using a system shareable code)
      * Will also link it's dependencies statically, if not overridden somewhere. */
-    bool staticLink_;
+    bool staticLink_ = false;
 
     /** Add dependency on *optional*, *experimental* or *flavor* tasks from the targeted task
      * For example you could depend on a "debug" flavor, or "filesystem" of boost
@@ -52,12 +52,16 @@ class Dependency {
     std::vector<std::string> require_;
 };
 
-BRIEF_JSON_START_INTERNAL(Dependency, std::string, name_, "name")
-BRIEF_JSON_ARG_INTERNAL(std::string, tag_, "tag")
-BRIEF_JSON_ARG_INTERNAL(bool, staticLink_, "staticLink")
-BRIEF_JSON_ARG_INTERNAL(std::vector<std::string>, require_, "require")
-BRIEF_JSON_STOP_INTERNAL()
-BRIEF_MSGPACK_INTERNAL(Dependency, _.name_, _.tag_, _.staticLink_, _.require_)
+#define Dependency_PROPERTIES \
+  (4, ( \
+    (std::string, name_, "name"), \
+    (std::string, tag_, "tag"), \
+    (bool, staticLink_, "staticLink"), \
+    (std::vector<std::string>, require_, "require")) \
+  )
+
+BRIEF_MSGPACK_INTERNAL(Dependency, Dependency_PROPERTIES)
+BRIEF_JSON_INTERNAL(Dependency, Dependency_PROPERTIES)
 
 /** Filters are used to enable a task if only certain criteria are met.
  * If two tasks with the same name collide, they must have different filters. */
@@ -65,7 +69,7 @@ class TaskFilters {
   BRIEF_MSGPACK_FRIENDS_INTERNAL()
   BRIEF_JSON_FRIENDS_INTERNAL()
 
- private:
+ public:
     /** Whitelist of archs, default to all. */
     std::vector<std::string> archs_;
 
@@ -79,12 +83,16 @@ class TaskFilters {
     std::string maxTag_;
 };
 
-BRIEF_JSON_START_INTERNAL(TaskFilters, std::vector<std::string>, archs_, "archs")
-BRIEF_JSON_ARG_INTERNAL(std::vector<std::string>, platforms_, "platforms")
-BRIEF_JSON_ARG_INTERNAL(std::string, minTag_, "minTag")
-BRIEF_JSON_ARG_INTERNAL(std::string, maxTag_, "maxTag")
-BRIEF_JSON_STOP_INTERNAL()
-BRIEF_MSGPACK_INTERNAL(TaskFilters, _.archs_, _.platforms_, _.minTag_, _.maxTag_)
+#define TaskFilters_PROPERTIES \
+  (4, ( \
+    (std::vector<std::string>, archs_, "archs"), \
+    (std::vector<std::string>, platforms_, "platforms"), \
+    (std::string, minTag_, "minTag"), \
+    (std::string, maxTag_, "maxTag")) \
+  )
+
+BRIEF_MSGPACK_INTERNAL(TaskFilters, TaskFilters_PROPERTIES)
+BRIEF_JSON_INTERNAL(TaskFilters, TaskFilters_PROPERTIES)
 
 class Task {
   BRIEF_MSGPACK_FRIENDS_INTERNAL()
@@ -98,6 +106,7 @@ class Task {
    *   - Fields defined in *the specified task* and not in *this* task are copied. */
   std::string inherits_;
 
+ public:
   enum type_t : uint8_t {
     /** Export task that implements a specification like libc, opengl...
      * It exposes nothing but dependencies to implementation.
@@ -194,26 +203,28 @@ using __strmap = std::unordered_map<std::string, std::string>;
 using __namedtasks = std::unordered_map<std::string, Task>;
 using __namedtasksmap = std::map<std::string, Task>;
 
-BRIEF_JSON_START_INTERNAL(Task, std::string, inherits_, "inherits")
-BRIEF_JSON_ARG_INTERNAL(Task::type_t, type_, "type")
-BRIEF_JSON_ARG_INTERNAL(TaskFilters, filters_, "filters")
-BRIEF_JSON_ARG_INTERNAL(std::vector<Dependency>, dependencies_, "dependencies")
-BRIEF_JSON_ARG_INTERNAL(__namedtasksmap, optionals_, "optionals")
-BRIEF_JSON_ARG_INTERNAL(__namedtasksmap, experimental_, "experimental")
-BRIEF_JSON_ARG_INTERNAL(__namedtasksmap, flavors_, "flavors")
-BRIEF_JSON_ARG_INTERNAL(std::vector<std::string>, patches_, "patches")
-BRIEF_JSON_ARG_INTERNAL(std::string, toolchain_, "toolchain")
-BRIEF_JSON_ARG_INTERNAL(std::vector<std::string>, toolchainFlags_, "toolchainFlags")
-BRIEF_JSON_ARG_INTERNAL(std::string, standard_, "standard")
-BRIEF_JSON_ARG_INTERNAL(Task::optimisation_t, optimize_, "optimize")
-BRIEF_JSON_ARG_INTERNAL(std::vector<std::string>, sources_, "sources")
-BRIEF_JSON_ARG_INTERNAL(std::vector<std::string>, includeDirs_, "includeDirs")
-BRIEF_JSON_ARG_INTERNAL(std::vector<std::string>, headers_, "headers")
-BRIEF_JSON_ARG_INTERNAL(__strmap, symbols_, "symbols")
-BRIEF_JSON_ARG_INTERNAL(Description, description_, "description")
-BRIEF_JSON_STOP_INTERNAL()
-BRIEF_MSGPACK_INTERNAL(Task, _.inherits_, _.type_, _.filters_, _.dependencies_, _.inherits_, _.type_, _.filters_,
-    _.dependencies_, _.optionals_, _.experimental_, _.flavors_, _.patches_, _.toolchain_, _.toolchainFlags_,
-    _.standard_, _.optimize_, _.sources_, _.includeDirs_, _.headers_, _.symbols_, _.description_)
+#define Task_PROPERTIES \
+  (17, ( \
+    (std::string, inherits_, "inherits"), \
+    (Task::type_t, type_, "type"), \
+    (TaskFilters, filters_, "filters"), \
+    (std::vector<Dependency>, dependencies_, "dependencies"), \
+    (__namedtasksmap, optionals_, "optionals"), \
+    (__namedtasksmap, experimental_, "experimental"), \
+    (__namedtasksmap, flavors_, "flavors"), \
+    (std::vector<std::string>, patches_, "patches"), \
+    (std::string, toolchain_, "toolchain"), \
+    (std::vector<std::string>, toolchainFlags_, "toolchainFlags"), \
+    (std::string, standard_, "standard"), \
+    (Task::optimisation_t, optimize_, "optimize"), \
+    (std::vector<std::string>, sources_, "sources"), \
+    (std::vector<std::string>, includeDirs_, "includeDirs"), \
+    (std::vector<std::string>, headers_, "headers"), \
+    (__strmap, symbols_, "symbols"), \
+    (Description, description_, "description")) \
+  )
+
+BRIEF_MSGPACK_INTERNAL(Task, Task_PROPERTIES)
+BRIEF_JSON_INTERNAL(Task, Task_PROPERTIES)
 
 }  // namespace brief

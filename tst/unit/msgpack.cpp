@@ -18,6 +18,10 @@
 
 #include "brief/msgpack.hpp"
 
+#include <algorithm>
+#include <string>
+#include <vector>
+
 #include <gtest/gtest.h>
 
 TEST(MsgPack, Primitives) {
@@ -25,9 +29,9 @@ TEST(MsgPack, Primitives) {
   std::stringstream output;
   std::string str = "hello world";
   for (int j = 0; j < kCount; j++) {
-    brief::msgpack::writer<int>::write(output, j * 42);
-    brief::msgpack::writer<double>::write(output, j * 3.14);
-    brief::msgpack::writer<std::string>::write(output, str);
+    brief::msgpack<int>::write(output, j * 42);
+    brief::msgpack<double>::write(output, j * 3.14);
+    brief::msgpack<std::string>::write(output, str);
   }
 
   int i;
@@ -35,9 +39,9 @@ TEST(MsgPack, Primitives) {
   std::string s;
   std::stringstream input(output.str());
   for (int j = 0; j < kCount; j++) {
-    brief::msgpack::reader<int>::read(input, i);
-    brief::msgpack::reader<double>::read(input, d);
-    brief::msgpack::reader<std::string>::read(input, s);
+    brief::msgpack<int>::read(input, i);
+    brief::msgpack<double>::read(input, d);
+    brief::msgpack<std::string>::read(input, s);
     ASSERT_EQ(j * 42, i);
     ASSERT_DOUBLE_EQ(j * 3.14, d);
     ASSERT_EQ("hello world", s);
@@ -51,11 +55,11 @@ TEST(MsgPack, Arrays) {
     data[i] = i;
 
   std::stringstream output;
-  brief::msgpack::writer<std::vector<int>>::write(output, data);
+  brief::msgpack<std::vector<int>>::write(output, data);
 
   std::vector<int> copy(kCount);
   std::stringstream input(output.str());
-  brief::msgpack::reader<std::vector<int>>::read(input, copy);
+  brief::msgpack<std::vector<int>>::read(input, copy);
 
   ASSERT_EQ(data, copy);
 }
@@ -67,11 +71,11 @@ TEST(MsgPack, Maps) {
     data[i] = i;
 
   std::stringstream output;
-  brief::msgpack::writer<std::unordered_map<int, int>>::write(output, data);
+  brief::msgpack<std::unordered_map<int, int>>::write(output, data);
 
   std::unordered_map<int, int> copy;
   std::stringstream input(output.str());
-  brief::msgpack::reader<std::unordered_map<int, int>>::read(input, copy);
+  brief::msgpack<std::unordered_map<int, int>>::read(input, copy);
 
   ASSERT_EQ(data, copy);
 }
@@ -85,22 +89,29 @@ struct MsgpackType {
     return b_ == _other.b_ && i_ == _other.i_ && f_ == _other.f_ && o_ == _other.o_;
   }
 };
-BRIEF_MSGPACK(MsgpackType, _.b_, _.i_, _.f_, _.o_)
+#define MsgpackType_PROPERTIES \
+  (4, ( \
+    (bool, b_, "b"), \
+    (int, i_, "i"), \
+    (float, f_, "f"), \
+    (std::experimental::optional<int>, o_, "o")) \
+  )
+BRIEF_MSGPACK(MsgpackType, MsgpackType_PROPERTIES)
 
 TEST(MsgPack, CustomTypes) {
   MsgpackType test {false, 42, 3.14};
   std::stringstream output;
-  brief::msgpack::writer<MsgpackType>::write(output, test);
+  brief::msgpack<MsgpackType>::write(output, test);
 
   test.o_ = 15;
   std::stringstream outputWithOptional;
-  brief::msgpack::writer<MsgpackType>::write(outputWithOptional, test);
+  brief::msgpack<MsgpackType>::write(outputWithOptional, test);
 
   ASSERT_GE(outputWithOptional.str().size(), output.str().size());
 
   std::stringstream input(outputWithOptional.str());
   MsgpackType read;
-  brief::msgpack::reader<MsgpackType>::read(input, read);
+  brief::msgpack<MsgpackType>::read(input, read);
 
   ASSERT_EQ(test, read);
 }

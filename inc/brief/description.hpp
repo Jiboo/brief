@@ -40,10 +40,14 @@ class License {
   /** Repo local path to the full license string */
   std::string path_;
 };
-BRIEF_JSON_START_INTERNAL(License, std::string, name_, "name")
-BRIEF_JSON_ARG_INTERNAL(std::string, path_, "path")
-BRIEF_JSON_STOP_INTERNAL()
-BRIEF_MSGPACK_INTERNAL(License, _.name_, _.path_)
+#define License_PROPERTIES \
+  (2, ( \
+    (std::string, name_, "name"), \
+    (std::string, path_, "path")) \
+  )
+
+BRIEF_MSGPACK_INTERNAL(License, License_PROPERTIES)
+BRIEF_JSON_INTERNAL(License, License_PROPERTIES)
 
 class Description {
   BRIEF_MSGPACK_FRIENDS_INTERNAL()
@@ -75,14 +79,18 @@ class Description {
   /// License applicable for this repo (usage of applications and/or libraries)
   std::vector<License> licenses_;
 };
-BRIEF_JSON_START_INTERNAL(Description, std::string, title_, "path")
-BRIEF_JSON_ARG_INTERNAL(std::string, summary_, "summary")
-BRIEF_JSON_ARG_INTERNAL(std::string, home_, "home")
-BRIEF_JSON_ARG_INTERNAL(std::string, bugs_, "bugs")
-BRIEF_JSON_ARG_INTERNAL(std::string, icon_, "icon")
-BRIEF_JSON_ARG_INTERNAL(std::vector<std::string>, publicIcons_, "publicIcons")
-BRIEF_JSON_ARG_INTERNAL(std::vector<License>, licenses_, "licenses")
-BRIEF_JSON_STOP_INTERNAL()
-BRIEF_MSGPACK_INTERNAL(Description, _.title_, _.summary_, _.home_, _.bugs_, _.icon_, _.publicIcons_, _.licenses_)
+#define Description_PROPERTIES \
+  (7, ( \
+    (std::string, title_, "path"), \
+    (std::string, summary_, "summary"), \
+    (std::string, home_, "home"), \
+    (std::string, bugs_, "bugs"), \
+    (std::string, icon_, "icon"), \
+    (std::vector<std::string>, publicIcons_, "publicIcons"), \
+    (std::vector<License>, licenses_, "licenses")) \
+  )
+
+BRIEF_MSGPACK_INTERNAL(Description, Description_PROPERTIES)
+BRIEF_JSON_INTERNAL(Description, Description_PROPERTIES)
 
 }  // namespace brief

@@ -35,7 +35,7 @@ class Tag {
   BRIEF_MSGPACK_FRIENDS_INTERNAL()
   BRIEF_JSON_FRIENDS_INTERNAL()
 
- private:
+ public:
   /** For git, that would be commit hash. */
   std::string id_;
 
@@ -47,17 +47,27 @@ class Tag {
    * This is useful to override some crazy tag names or bad cvs migration/mirror. */
   std::string tag_;
 };
-BRIEF_JSON_START_INTERNAL(Tag, std::string, id_, "id")
-BRIEF_JSON_ARG_INTERNAL(std::string, branch_, "branch")
-BRIEF_JSON_ARG_INTERNAL(std::string, tag_, "tag")
-BRIEF_JSON_STOP_INTERNAL()
-BRIEF_MSGPACK_INTERNAL(Tag, _.id_, _.branch_, _.tag_)
+
+#define Tag_PROPERTIES \
+  (3, ( \
+    (std::string, id_, "id"), \
+    (std::string, branch_, "branch"), \
+    (std::string, tag_, "tag")) \
+  )
+
+BRIEF_MSGPACK_INTERNAL(Tag, Tag_PROPERTIES)
+BRIEF_JSON_INTERNAL(Tag, Tag_PROPERTIES)
 
 class Repository {
   BRIEF_MSGPACK_FRIENDS_INTERNAL()
   BRIEF_JSON_FRIENDS_INTERNAL()
 
  private:
+  /** Repo local path to other description files, tasks and exports will get merged into this one.
+   * Thus files are optional, will not even warn if missing (except in verbose mode). */
+  std::vector<std::string> imports_;
+
+ public:
   /**Abbreviated name (like gtest and not Google Test)
    * Max size = 64 */
   std::string name_;
@@ -73,18 +83,13 @@ class Repository {
   std::unordered_map<std::string, Tag> tags_;
 
   /** Estimated in KiB, on a 4k sector disk */
-  uint32_t repoSize_;
+  uint32_t repoSize_ = 0;
 
   /** Estimated in KiB, on a 4k sector disk */
-  uint32_t buildSize_;
+  uint32_t buildSize_ = 0;
 
   /** Estimated in seconds, relative to musl compile time on same machine */
-  float buildTime_;
-
-  /** Repo local path to other description files, tasks and exports will get merged into this one.
-   * Thus files are optional, will not even warn if missing (except in verbose mode). */
-  // No need for msgpack serialization, they will get merged in configure step
-  std::vector<std::string> imports_;
+  float buildTime_ = 0;
 
   /** List of tasks needed to build everything */
   std::vector<std::string> all_;
@@ -104,22 +109,23 @@ class Repository {
 
 using __namedtag = std::unordered_map<std::string, Tag>;
 
-BRIEF_JSON_START_INTERNAL(Repository, std::string, name_, "name")
-BRIEF_JSON_ARG_INTERNAL(std::string, url_, "url")
-BRIEF_JSON_ARG_INTERNAL(__strmap, constants_, "constants")
-BRIEF_JSON_ARG_INTERNAL(__namedtag, tags_, "tags")
-BRIEF_JSON_ARG_INTERNAL(uint32_t, repoSize_, "repoSize")
-BRIEF_JSON_ARG_INTERNAL(uint32_t, buildSize_, "buildSize")
-BRIEF_JSON_ARG_INTERNAL(float, buildTime_, "buildTime")
-BRIEF_JSON_ARG_INTERNAL(std::vector<std::string>, imports_, "imports")
-BRIEF_JSON_ARG_INTERNAL(std::vector<std::string>, all_, "all")
-BRIEF_JSON_ARG_INTERNAL(std::vector<std::string>, test_, "test")
-BRIEF_JSON_ARG_INTERNAL(__namedtasks, tasks_, "tasks")
-BRIEF_JSON_ARG_INTERNAL(__namedtasks, exports_, "exports")
-BRIEF_JSON_ARG_INTERNAL(Description, description_, "description")
-BRIEF_JSON_STOP_INTERNAL()
-BRIEF_MSGPACK_INTERNAL(Repository, _.name_, _.url_, _.constants_, _.tags_, _.repoSize_, _.buildSize_, _.buildTime_,
-    // imports ignored, it's eliminated during configure
-    _.all_, _.test_, _.tasks_, _.exports_, _.description_)
+#define Repository_PROPERTIES \
+  (12, ( \
+    (std::string, name_, "name"), \
+    (std::string, url_, "url"), \
+    (__strmap, constants_, "constants"), \
+    (__namedtag, tags_, "tags"), \
+    (uint32_t, repoSize_, "repoSize"), \
+    (uint32_t, buildSize_, "buildSize"), \
+    (float, buildTime_, "buildTime"), \
+    (std::vector<std::string>, all_, "all"), \
+    (std::vector<std::string>, test_, "test"), \
+    (__namedtasks, tasks_, "tasks"), \
+    (__namedtasks, exports_, "exports"), \
+    (Description, description_, "description")) \
+  )
+
+BRIEF_MSGPACK_INTERNAL(Repository, Repository_PROPERTIES)
+BRIEF_JSON_INTERNAL(Repository, Repository_PROPERTIES)
 
 }  // namespace brief

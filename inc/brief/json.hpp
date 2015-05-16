@@ -27,8 +27,9 @@
 #include <vector>
 #include <experimental/string_view>
 
+#include <boost/preprocessor.hpp>
+
 namespace brief {
-namespace json {
 
 struct token_t {
   enum type_t : char {
@@ -209,29 +210,35 @@ class Tokenizer {
 
 
 template <typename T>
-struct parser {
+struct json {
   static void parse(Tokenizer &_tokenizer, T &_ref) {
     auto tok = _tokenizer.next();
     throwError(tok.line_, tok.col_, std::string("can't parse a ") + typeid(T).name());
+  }
+  static void serialize(std::ostream &_stream, const T &_ref, int _indent = 0) {
+    _stream << _ref;
   }
 };
 
 template <typename T>
 T parse(Tokenizer &_tokenizer) {
   T value;
-  parser<T>::parse(_tokenizer, value);
+  json<T>::parse(_tokenizer, value);
   return value;
 }
 
 // TODO Check that atoi result would fit in _dest
 #define BRIEF_JSON_BIND_INT(CTYPE) \
-template <> \
-struct parser<CTYPE> { \
-  static void parse(Tokenizer &_tokenizer, CTYPE &_dest) { \
-    token_t token = _tokenizer.expect(token_t::type_t::NUMBER); \
-    _dest = atoi(std::string(token.view_.data(), token.view_.size()).c_str()); \
-  } \
-};
+  template <> \
+  struct json<CTYPE> { \
+    static void parse(Tokenizer &_tokenizer, CTYPE &_dest) { \
+      token_t token = _tokenizer.expect(token_t::type_t::NUMBER); \
+      _dest = atoi(std::string(token.view_.data(), token.view_.size()).c_str()); \
+    } \
+    static void serialize(std::ostream &_stream, const CTYPE &_ref, int _indent = 0) { \
+      _stream << _ref; \
+    } \
+  };
 
 BRIEF_JSON_BIND_INT(uint8_t)
 BRIEF_JSON_BIND_INT(uint16_t)
@@ -243,40 +250,81 @@ BRIEF_JSON_BIND_INT(int32_t)
 BRIEF_JSON_BIND_INT(int64_t)
 
 #define BRIEF_JSON_BIND_FLOAT(CTYPE) \
-template <> \
-struct parser<CTYPE> { \
-  static void parse(Tokenizer &_tokenizer, CTYPE &_dest) { \
-    token_t token = _tokenizer.expect(token_t::type_t::NUMBER); \
-    _dest = atof(std::string(token.view_.data(), token.view_.size()).c_str()); \
-  } \
-};
+  template <> \
+  struct json<CTYPE> { \
+    static void parse(Tokenizer &_tokenizer, CTYPE &_dest) { \
+      token_t token = _tokenizer.expect(token_t::type_t::NUMBER); \
+      _dest = atof(std::string(token.view_.data(), token.view_.size()).c_str()); \
+    } \
+    static void serialize(std::ostream &_stream, const CTYPE &_ref, int _indent = 0) { \
+      _stream << _ref; \
+    } \
+  };
 
 BRIEF_JSON_BIND_FLOAT(float)
 BRIEF_JSON_BIND_FLOAT(double)
 
 template <>
-struct parser<std::string> {
+struct json<std::string> {
   static void parse(Tokenizer &_tokenizer, std::string &_dest) {
     token_t token = _tokenizer.expect(token_t::type_t::STRING);
     // TODO Unescape
     _dest.assign(token.view_.data() + 1, token.view_.size() - 2);  // offsets to remove quote characters
   }
+  static void serialize(std::ostream &_stream, const std::string &_ref, int _indent = 0) {
+    // TODO Escaping
+    _stream << '"' << _ref << '"';
+  }
 };
 
+inline void indent(std::ostream &_stream, int _indent) {
+  for (int i = 0; i < _indent; i++)
+    _stream << "  ";
+}
+
 template <typename T>
-struct parser<std::vector<T>> {
+struct json<std::vector<T>> {
   static void parse(Tokenizer &_tokenizer, std::vector<T> &_dest) {
     _tokenizer.expect(token_t::type_t::ARRAY_OPEN);
     token_t next = _tokenizer.poll();
     while (next.type_ != token_t::type_t::ARRAY_CLOSE) {
       T local;
-      parser<T>::parse(_tokenizer, local);
+      json<T>::parse(_tokenizer, local);
       _dest.emplace_back(std::move(local));
       next = _tokenizer.poll();
       if (next.type_ != token_t::type_t::ARRAY_CLOSE)
         _tokenizer.expect(token_t::type_t::COMMA);
     }
     _tokenizer.expect(token_t::type_t::ARRAY_CLOSE);
+  }
+  static void serialize(std::ostream &_stream, const std::vector<T> &_ref, int _indent = 0) {
+    _stream << '[';
+
+    // Pre-serialize a compact form to check if could be inlined.
+    std::stringstream buf;
+    auto end = std::end(_ref);
+    auto last = end - 1;
+    for (auto it = std::begin(_ref); it != end; it++) {
+      json<T>::serialize(buf, *it, _indent + 1);
+      if (it != last)
+        buf << ", ";
+    }
+    auto bufstr = buf.str();
+
+    if (bufstr.size() < 64) {
+      _stream << bufstr;
+    } else {
+      _stream << '\n';
+      indent(_stream, _indent + 1);
+      for (auto it = std::begin(_ref); it != end; it++) {
+        json<T>::serialize(buf, *it, _indent + 1);
+        if (it != last)
+          buf << ",\n";
+      }
+      indent(_stream, _indent);
+    }
+
+    _stream << ']';
   }
 };
 
@@ -286,7 +334,7 @@ void parse_object(Tokenizer &_tokenizer, std::function<void(const K&)> _cb) {
   token_t next = _tokenizer.poll();
   while (next.type_ != token_t::type_t::OBJECT_CLOSE) {
     K key;
-    parser<K>::parse(_tokenizer, key);
+    json<K>::parse(_tokenizer, key);
     _tokenizer.expect(token_t::type_t::COLON);
     _cb(key);
     next = _tokenizer.poll();
@@ -300,61 +348,109 @@ template <typename K, typename V, class OutputIt>
 void parse_map(Tokenizer &_tokenizer, OutputIt _dest) {
   parse_object<K>(_tokenizer, [&_tokenizer, &_dest](const K& key) {
     V value;
-    parser<V>::parse(_tokenizer, value);
+    json<V>::parse(_tokenizer, value);
     *_dest++ = {key, value};
   });
 }
+template <typename K, typename V, class InputIt>
+static void serialize_map(std::ostream &_stream, const InputIt _being, const InputIt _end, int _indent = 0) {
+  _stream << '{';
+
+  // Pre-serialize a compact form to check if could be inlined.
+  std::stringstream buf;
+  for (auto it = _being; it != _end; ) {
+    json<K>::serialize(buf, it->first, _indent + 1);
+    buf << ": ";
+    json<V>::serialize(buf, it->second, _indent + 1);
+    if (++it != _end)
+      buf << ", ";
+  }
+  auto bufstr = buf.str();
+
+  if (bufstr.size() < 64) {
+    _stream << bufstr;
+  } else {
+    _stream << '\n';
+    indent(_stream, _indent + 1);
+    for (auto it = _being; it != _end;) {
+      json<K>::serialize(buf, it->first, _indent + 1);
+      buf << ": ";
+      json<V>::serialize(buf, it->second, _indent + 1);
+      if (++it != _end)
+        buf << ",\n";
+    }
+    indent(_stream, _indent);
+  }
+
+  _stream << '}';
+}
 
 template <typename K, typename V>
-struct parser<std::unordered_map<K, V>> {
+struct json<std::unordered_map<K, V>> {
   static void parse(Tokenizer &_tokenizer, std::unordered_map<K, V> &_dest) {
     parse_map<K, V>(_tokenizer, std::inserter(_dest, _dest.begin()));
   }
-};
-
-template <typename K, typename V>
-struct parser<std::map<K, V>> {
-  static void parse(Tokenizer &_tokenizer, std::map<K, V> &_dest) {
-    parse_map<K, V>(_tokenizer, std::inserter(_dest, _dest.begin()));
+  static void serialize(std::ostream &_stream, const std::unordered_map<K, V> &_ref, int _indent = 0) {
+    serialize_map<K, V>(_stream, std::begin(_ref), std::end(_ref), _indent);
   }
 };
 
-}  // namespace json
+template <typename K, typename V>
+struct json<std::map<K, V>> {
+  static void parse(Tokenizer &_tokenizer, std::map<K, V> &_dest) {
+    parse_map<K, V>(_tokenizer, std::inserter(_dest, _dest.begin()));
+  }
+  static void serialize(std::ostream &_stream, const std::map<K, V> &_ref, int _indent = 0) {
+    serialize_map<K, V>(_stream, std::begin(_ref), std::end(_ref), _indent);
+  }
+};
 
 #define BRIEF_JSON_FRIENDS_INTERNAL() \
-template<typename T> friend void json::parser<T>::parse(brief::json::Tokenizer &_tokenizer, T&);
+  template<typename T> friend void json<T>::parse(Tokenizer &_tokenizer, T&); \
+  template<typename T> friend void json<T>::serialize(std::ostream &_stream, const T&, int _indent);
 
-#define BRIEF_JSON_START_INTERNAL(TYPE, ARG_0_TYPE, ARG_0_C_NAME, ARG_0_JSON_NAME) \
-namespace json { \
-template<> \
-struct parser<TYPE> { \
-  static void parse(brief::json::Tokenizer &_tokenizer, TYPE &_o) { \
-    parse_object<std::string>(_tokenizer, [&_tokenizer, &_o] (const std::string &_key) { \
-      if (_key == ARG_0_JSON_NAME) \
-        _o. ARG_0_C_NAME = brief::json::parse<ARG_0_TYPE>(_tokenizer);
+#ifndef BRIEF_PROP_TYPE
+#define BRIEF_PROP_TYPE(TUPLE) BOOST_PP_TUPLE_ELEM(3, 0, TUPLE)
+#define BRIEF_PROP_FIELD(TUPLE) BOOST_PP_TUPLE_ELEM(3, 1, TUPLE)
+#define BRIEF_PROP_NAME(TUPLE) BOOST_PP_TUPLE_ELEM(3, 2, TUPLE)
+#endif
 
-#define BRIEF_JSON_ARG_INTERNAL(ARG_N_TYPE, ARG_N_C_NAME, ARG_N_JSON_NAME) \
-      else if (_key == ARG_N_JSON_NAME) \
-        _o. ARG_N_C_NAME = brief::json::parse<ARG_N_TYPE>(_tokenizer); \
+#define BRIEF_JSON_PROP_PARSE(R, ELSE, PROP) \
+  BOOST_PP_EXPR_IF(ELSE, else) if (_key == BRIEF_PROP_NAME(PROP)) \
+    _o. BRIEF_PROP_FIELD(PROP) = brief::parse<BRIEF_PROP_TYPE(PROP)>(_tokenizer);
 
-#define BRIEF_JSON_STOP_INTERNAL() \
-    }); \
-  } \
-}; \
-}  // namespace json
+#define BRIEF_JSON_PROP_SERIALIZE(R, SIZE, I, PROP) \
+  brief::indent(_stream, _indent + 1); \
+  brief::json<std::string>::serialize(_stream, BRIEF_PROP_NAME(PROP), _indent + 1); \
+  _stream << ": "; \
+  brief::json<BRIEF_PROP_TYPE(PROP)>::serialize(_stream, _ref. BRIEF_PROP_FIELD(PROP), _indent + 1); \
+  _stream << BOOST_PP_EXPR_IF(BOOST_PP_NOT_EQUAL(I, BOOST_PP_SUB(SIZE, 1)), ",") "\n";
+
+#define BRIEF_JSON_INTERNAL(TYPE, PROPERTIES) \
+  template<> \
+  struct json<TYPE> { \
+    static void parse(brief::Tokenizer &_tokenizer, TYPE &_o) { \
+      parse_object<std::string>(_tokenizer, [&_tokenizer, &_o] (const std::string &_key) { \
+        BRIEF_JSON_PROP_PARSE(r, 0, BOOST_PP_ARRAY_ELEM(0, PROPERTIES)) \
+        BOOST_PP_LIST_FOR_EACH(BRIEF_JSON_PROP_PARSE, 1, BOOST_PP_ARRAY_TO_LIST(BOOST_PP_ARRAY_POP_FRONT(PROPERTIES))) \
+      }); \
+    } \
+    static void serialize(std::ostream &_stream, const TYPE &_ref, int _indent = 0) { \
+      _stream << "{\n"; \
+      BOOST_PP_LIST_FOR_EACH_I(BRIEF_JSON_PROP_SERIALIZE, \
+                               BOOST_PP_ARRAY_SIZE(PROPERTIES), \
+                               BOOST_PP_ARRAY_TO_LIST(PROPERTIES)) \
+      brief::indent(_stream, _indent); _stream << "}"; \
+    } \
+  };
 
 }  // namespace brief
 
 #define BRIEF_JSON_FRIENDS() \
-template<typename T> friend void brief::json::parser<T>::write(brief::json::Tokenizer &_tokenizer, const T&);
+  template<typename T> friend void brief::json<T>::parse(brief::json::Tokenizer &_tokenizer, T&); \
+  template<typename T> friend void brief::json<T>::serialize(std::ostream &_stream, const T&, int _indent);
 
-#define BRIEF_JSON_START(TYPE, ARG_0_TYPE, ARG_0_C_NAME, ARG_0_JSON_NAME) \
-namespace brief { \
-BRIEF_JSON_START_INTERNAL(TYPE, ARG_0_TYPE, ARG_0_C_NAME, ARG_0_JSON_NAME)
-
-#define BRIEF_JSON_ARG(ARG_N_TYPE, ARG_N_C_NAME, ARG_N_JSON_NAME) \
-BRIEF_JSON_ARG_INTERNAL(ARG_N_TYPE, ARG_N_C_NAME, ARG_N_JSON_NAME)
-
-#define BRIEF_JSON_STOP() \
-BRIEF_JSON_STOP_INTERNAL() \
-}  // namespace brief
+#define BRIEF_JSON(TYPE, PROPERTIES) \
+  namespace brief { \
+  BRIEF_JSON_INTERNAL(TYPE, PROPERTIES) \
+  }  // namespace brief
