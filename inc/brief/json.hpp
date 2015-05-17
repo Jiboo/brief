@@ -295,8 +295,11 @@ struct json<std::vector<T>> {
       json<T>::parse(_tokenizer, local);
       _dest.emplace_back(std::move(local));
       next = _tokenizer.poll();
-      if (next.type_ != token_t::type_t::ARRAY_CLOSE)
+      // FIXME The or is for objects with a trailing , before }
+      if (next.type_ != token_t::type_t::ARRAY_CLOSE || next.type_ == token_t::type_t::COMMA) {
         _tokenizer.expect(token_t::type_t::COMMA);
+        next = _tokenizer.poll();
+      }
     }
     _tokenizer.expect(token_t::type_t::ARRAY_CLOSE);
   }
@@ -320,9 +323,11 @@ struct json<std::vector<T>> {
       _stream << '\n';
       indent(_stream, _indent + 1);
       for (auto it = std::begin(_ref); it != end; it++) {
-        json<T>::serialize(buf, *it, _indent + 1);
-        if (it != last)
-          buf << ",\n";
+        json<T>::serialize(_stream, *it, _indent + 1);
+        if (it != last) {
+          _stream << ",\n";
+          indent(_stream, _indent + 1);
+        }
       }
       indent(_stream, _indent);
     }
@@ -341,8 +346,11 @@ void parse_object(Tokenizer &_tokenizer, std::function<void(const K&)> _cb) {
     _tokenizer.expect(token_t::type_t::COLON);
     _cb(key);
     next = _tokenizer.poll();
-    if (next.type_ != token_t::type_t::OBJECT_CLOSE)
+    // FIXME The or is for objects with a trailing , before }
+    if (next.type_ != token_t::type_t::OBJECT_CLOSE || next.type_ == token_t::type_t::COMMA) {
       _tokenizer.expect(token_t::type_t::COMMA);
+      next = _tokenizer.poll();
+    }
   }
   _tokenizer.expect(token_t::type_t::OBJECT_CLOSE);
 }
@@ -362,11 +370,16 @@ static void serialize_map(std::ostream &_stream, const InputIt _being, const Inp
   // Pre-serialize a compact form to check if could be inlined.
   std::stringstream buf;
   for (auto it = _being; it != _end; ) {
-    json<K>::serialize(buf, it->first, _indent + 1);
-    buf << ": ";
-    json<V>::serialize(buf, it->second, _indent + 1);
-    if (++it != _end)
-      buf << ", ";
+    const V defaultValue;  // Don't serialize if default values, useful for Task and Description
+    if (it->second != defaultValue) {
+      json<K>::serialize(buf, it->first, _indent + 1);
+      buf << ": ";
+      json<V>::serialize(buf, it->second, _indent + 1);
+      if (++it != _end)
+        buf << ", ";
+    } else {
+      ++it;
+    }
   }
   auto bufstr = buf.str();
 
@@ -376,11 +389,19 @@ static void serialize_map(std::ostream &_stream, const InputIt _being, const Inp
     _stream << '\n';
     indent(_stream, _indent + 1);
     for (auto it = _being; it != _end;) {
-      json<K>::serialize(buf, it->first, _indent + 1);
-      buf << ": ";
-      json<V>::serialize(buf, it->second, _indent + 1);
-      if (++it != _end)
-        buf << ",\n";
+      const V defaultValue;  // Don't serialize if default values, useful for Task and Description
+      // FIXME Defaults to random stuff for primitives, idem in BRIEF_JSON_PROP_SERIALIZE
+      if (it->second != defaultValue) {
+        json<K>::serialize(_stream, it->first, _indent + 1);
+        _stream << ": ";
+        json<V>::serialize(_stream, it->second, _indent + 1);
+        if (++it != _end) {
+          _stream << ",\n";
+          indent(_stream, _indent + 1);
+        }
+      } else {
+        ++it;
+      }
     }
     indent(_stream, _indent);
   }
@@ -421,11 +442,13 @@ struct json<std::map<K, V>> {
     _ref = BRIEF_ENUM_VALUE(ENUM);
 
 #define BRIEF_JSON_PROP_SERIALIZE(R, SIZE, I, PROP) \
-  brief::indent(_stream, _indent + 1); \
-  brief::json<std::string>::serialize(_stream, BRIEF_PROP_NAME(PROP), _indent + 1); \
-  _stream << ": "; \
-  brief::json<BRIEF_PROP_TYPE(PROP)>::serialize(_stream, _ref. BRIEF_PROP_FIELD(PROP), _indent + 1); \
-  _stream << BOOST_PP_EXPR_IF(BOOST_PP_NOT_EQUAL(I, BOOST_PP_SUB(SIZE, 1)), ",") "\n";
+  if (_ref. BRIEF_PROP_FIELD(PROP) != BRIEF_PROP_TYPE(PROP) ()) { \
+    brief::indent(_stream, _indent + 1); \
+    brief::json<std::string>::serialize(_stream, BRIEF_PROP_NAME(PROP), _indent + 1); \
+    _stream << ": "; \
+    brief::json<BRIEF_PROP_TYPE(PROP)>::serialize(_stream, _ref. BRIEF_PROP_FIELD(PROP), _indent + 1); \
+    _stream << BOOST_PP_EXPR_IF(BOOST_PP_NOT_EQUAL(I, BOOST_PP_SUB(SIZE, 1)), ",") "\n"; \
+  }
 
 #define BRIEF_JSON_ENUM_SERIALIZE(R, UNUSED, ENUM) \
   case BRIEF_ENUM_VALUE(ENUM): \

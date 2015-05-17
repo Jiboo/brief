@@ -14,6 +14,7 @@ set(LIBBRIEF_HEADERS
   inc/brief/vcs.hpp
   inc/brief/toolchain.hpp
   inc/brief/plugin.hpp
+  inc/brief/serial.hpp
   inc/brief/json.hpp
   inc/brief/msgpack.hpp
 

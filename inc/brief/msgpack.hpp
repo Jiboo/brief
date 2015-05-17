@@ -294,17 +294,35 @@ struct msgpack<std::experimental::optional<T>> {
     } \
   };
 
+#define BRIEF_MSGPACK_ENUM_INTERNAL(TYPE, VALUES) \
+  template <> \
+  struct msgpack<TYPE> { \
+    static void write(std::ostream &_stream, const TYPE &_ref) { \
+      msgpack<std::underlying_type<TYPE>::type>::write(_stream, _ref); \
+    } \
+    static void read(std::istream &_stream, TYPE &_ref) { \
+      typename std::underlying_type<TYPE>::type val; \
+      msgpack<decltype(val)>::read(_stream, val); \
+      _ref = static_cast<TYPE>(val); \
+    } \
+  };
+
 #define BRIEF_MSGPACK_FRIENDS_INTERNAL() \
   template<typename T> friend void msgpack<T>::write(std::ostream&, const T&); \
   template<typename T> friend void msgpack<T>::read(std::istream&, T&);
 
 }  // namespace brief
 
+#define BRIEF_MSGPACK_FRIENDS() \
+  template<typename T> friend void brief::msgpack<T>::write(std::ostream&, const T&); \
+  template<typename T> friend void brief::msgpack<T>::read(std::istream&, T&);
+
 #define BRIEF_MSGPACK(TYPE, PROPERTIES) \
   namespace brief { \
   BRIEF_MSGPACK_INTERNAL(TYPE, PROPERTIES) \
   }  // namespace brief
 
-#define BRIEF_MSGPACK_FRIENDS() \
-  template<typename T> friend void brief::msgpack<T>::write(std::ostream&, const T&); \
-  template<typename T> friend void brief::msgpack<T>::read(std::istream&, T&);
+#define BRIEF_MSGPACK_ENUM(TYPE, VALUES) \
+  namespace brief { \
+  BRIEF_MSGPACK_ENUM_INTERNAL(TYPE, VALUES) \
+  }  // namespace brief

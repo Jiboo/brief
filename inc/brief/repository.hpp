@@ -34,6 +34,7 @@ namespace brief {
 class Tag {
   BRIEF_MSGPACK_FRIENDS_INTERNAL()
   BRIEF_JSON_FRIENDS_INTERNAL()
+  BRIEF_EQUALS_FRIENDS_INTERNAL(Tag)
 
  public:
   /** For git, that would be commit hash. */
@@ -57,10 +58,12 @@ class Tag {
 
 BRIEF_MSGPACK_INTERNAL(Tag, Tag_PROPERTIES)
 BRIEF_JSON_INTERNAL(Tag, Tag_PROPERTIES)
+BRIEF_EQUALS_INTERNAL(Tag, Tag_PROPERTIES)
 
 class Repository {
   BRIEF_MSGPACK_FRIENDS_INTERNAL()
   BRIEF_JSON_FRIENDS_INTERNAL()
+  BRIEF_EQUALS_FRIENDS_INTERNAL(Repository)
 
  private:
   /** Repo local path to other description files, tasks and exports will get merged into this one.
@@ -112,7 +115,7 @@ class Repository {
     (std::string, name_, "name"), \
     (std::string, url_, "url"), \
     (__strmap, constants_, "constants"), \
-    (__namedtag, tags_, "tags"), \
+    (__namedtags, tags_, "tags"), \
     (uint32_t, repoSize_, "repoSize"), \
     (uint32_t, buildSize_, "buildSize"), \
     (float, buildTime_, "buildTime"), \
@@ -125,5 +128,6 @@ class Repository {
 
 BRIEF_MSGPACK_INTERNAL(Repository, Repository_PROPERTIES)
 BRIEF_JSON_INTERNAL(Repository, Repository_PROPERTIES)
+BRIEF_EQUALS_INTERNAL(Repository, Repository_PROPERTIES)
 
 }  // namespace brief

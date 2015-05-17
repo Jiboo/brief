@@ -32,6 +32,7 @@ namespace brief {
 class Description {
   BRIEF_MSGPACK_FRIENDS_INTERNAL()
   BRIEF_JSON_FRIENDS_INTERNAL()
+  BRIEF_EQUALS_FRIENDS_INTERNAL(Description)
 
  private:
   /** Displayed name (like Google Test and not gtest)
@@ -59,6 +60,7 @@ class Description {
   /// License applicable for this repo (usage of applications and/or libraries)
   std::unordered_map<std::string, std::string> licenses_;
 };
+
 #define Description_PROPERTIES \
   (7, ( \
     (std::string, title_, "path"), \
@@ -72,5 +74,6 @@ class Description {
 
 BRIEF_MSGPACK_INTERNAL(Description, Description_PROPERTIES)
 BRIEF_JSON_INTERNAL(Description, Description_PROPERTIES)
+BRIEF_EQUALS_INTERNAL(Description, Description_PROPERTIES)
 
 }  // namespace brief

@@ -33,6 +33,7 @@ namespace brief {
 class Dependency {
   BRIEF_MSGPACK_FRIENDS_INTERNAL()
   BRIEF_JSON_FRIENDS_INTERNAL()
+  BRIEF_EQUALS_FRIENDS_INTERNAL(Dependency)
 
  public:
     /** The name of a task */
@@ -62,12 +63,14 @@ class Dependency {
 
 BRIEF_MSGPACK_INTERNAL(Dependency, Dependency_PROPERTIES)
 BRIEF_JSON_INTERNAL(Dependency, Dependency_PROPERTIES)
+BRIEF_EQUALS_INTERNAL(Dependency, Dependency_PROPERTIES)
 
 /** Filters are used to enable a task if only certain criteria are met.
  * If two tasks with the same name collide, they must have different filters. */
 class TaskFilters {
   BRIEF_MSGPACK_FRIENDS_INTERNAL()
   BRIEF_JSON_FRIENDS_INTERNAL()
+  BRIEF_EQUALS_FRIENDS_INTERNAL(TaskFilters)
 
  public:
     /** Whitelist of archs, default to all. */
@@ -93,10 +96,12 @@ class TaskFilters {
 
 BRIEF_MSGPACK_INTERNAL(TaskFilters, TaskFilters_PROPERTIES)
 BRIEF_JSON_INTERNAL(TaskFilters, TaskFilters_PROPERTIES)
+BRIEF_EQUALS_INTERNAL(TaskFilters, TaskFilters_PROPERTIES)
 
 class Task {
   BRIEF_MSGPACK_FRIENDS_INTERNAL()
   BRIEF_JSON_FRIENDS_INTERNAL()
+  BRIEF_EQUALS_FRIENDS_INTERNAL(Task)
 
  private:
   /** Inherits from another task.
@@ -108,6 +113,9 @@ class Task {
 
  public:
   enum type_t : uint8_t {
+    /** Used by codegen tasks, or file copies */
+    OTHER,
+
     /** Export task that implements a specification like libc, opengl...
      * It exposes nothing but dependencies to implementation.
      * It's the only task that won't fail on install if another task
@@ -135,7 +143,7 @@ class Task {
      * It exposes a plugin (.so/.dll) or a toolchain script,
      * that takes a set of tasks as input to different entry points. */
     TOOLCHAIN
-  } type_;
+  } type_ = type_t::OTHER;
 
   /** Used by tools to pick the best task between two having the same name, see the associated table. */
   TaskFilters filters_;
@@ -177,7 +185,7 @@ class Task {
    * Default values supplied by the toolchain. */
   enum optimisation_t : uint8_t {
     NONE, SIZE, SPEED
-  } optimize_;
+  } optimize_ = optimisation_t::NONE;
 
   /** Used by the most toolchains to build or install this task
    * You can use wildcards, * for any file in this directory, ** for any file in this directory and subdirectories */
@@ -200,7 +208,8 @@ class Task {
 };
 
 #define Task_type_t_VALUES \
-  (6, ( \
+  (7, ( \
+    (Task::type_t::OTHER, "OTHER"), \
     (Task::type_t::SPECIFICATION, "SPECIFICATION"), \
     (Task::type_t::LIBRARY, "LIBRARY"), \
     (Task::type_t::APPLICATION, "APPLICATION"), \
@@ -209,6 +218,7 @@ class Task {
     (Task::type_t::TOOLCHAIN, "TOOLCHAIN")) \
   )
 BRIEF_JSON_ENUM_INTERNAL(Task::type_t, Task_type_t_VALUES)
+BRIEF_MSGPACK_ENUM_INTERNAL(Task::type_t, Task_type_t_VALUES)
 
 #define Task_optimisation_t_VALUES \
   (3, ( \
@@ -217,6 +227,7 @@ BRIEF_JSON_ENUM_INTERNAL(Task::type_t, Task_type_t_VALUES)
     (Task::optimisation_t::SPEED, "SPEED")) \
   )
 BRIEF_JSON_ENUM_INTERNAL(Task::optimisation_t, Task_optimisation_t_VALUES)
+BRIEF_MSGPACK_ENUM_INTERNAL(Task::optimisation_t, Task_optimisation_t_VALUES)
 
 #define Task_PROPERTIES \
   (17, ( \
@@ -241,5 +252,6 @@ BRIEF_JSON_ENUM_INTERNAL(Task::optimisation_t, Task_optimisation_t_VALUES)
 
 BRIEF_MSGPACK_INTERNAL(Task, Task_PROPERTIES)
 BRIEF_JSON_INTERNAL(Task, Task_PROPERTIES)
+BRIEF_EQUALS_INTERNAL(Task, Task_PROPERTIES)
 
 }  // namespace brief
