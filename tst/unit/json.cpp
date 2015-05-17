@@ -58,21 +58,34 @@ TEST(JsonReader, Parser) {
 struct JsonType {
   int a_;
   float b_;
+  enum enum_t : uint8_t {
+    NONE, TEST, TEST2
+  } e_;
   bool operator ==(const JsonType &_other) const {
-    return a_ == _other.a_ && b_ == _other.b_;
+    return a_ == _other.a_ && b_ == _other.b_ && e_ == _other.e_;
   }
 };
+
+#define JsonType_enum_t_VALUES \
+  (3, ( \
+    (JsonType::enum_t::NONE, "NONE"), \
+    (JsonType::enum_t::TEST, "TEST"), \
+    (JsonType::enum_t::TEST2, "TEST2")) \
+  )
+BRIEF_JSON_ENUM(JsonType::enum_t, JsonType_enum_t_VALUES)
+
 #define JsonType_PROPERTIES \
-  (2, ( \
+  (3, ( \
     (int, a_, "a"), \
-    (float, b_, "b")) \
+    (float, b_, "b"), \
+    (JsonType::enum_t, e_, "e")) \
   )
 BRIEF_JSON(JsonType, JsonType_PROPERTIES)
 
 TEST(JsonReader, CustomTypes) {
-  const char *test = "{\"a\": 42, \"b\": 3.14}";
+  const char *test = "{\"a\": 42, \"b\": 3.14, \"e\": \"TEST\"}";
   brief::Tokenizer tokenizer(test, test + strlen(test));
 
-  JsonType expected = {42, 3.14};
+  JsonType expected = {42, 3.14, JsonType::enum_t::TEST};
   ASSERT_EQ(expected, brief::parse<JsonType>(tokenizer));
 }

@@ -34,6 +34,8 @@
 
 #include <boost/preprocessor.hpp>
 
+#include "brief/serial.hpp"
+
 namespace brief {
 
 /**
@@ -271,12 +273,6 @@ struct msgpack<std::experimental::optional<T>> {
     }
   }
 };
-
-#ifndef BRIEF_PROP_TYPE
-#define BRIEF_PROP_TYPE(TUPLE) BOOST_PP_TUPLE_ELEM(3, 0, TUPLE)
-#define BRIEF_PROP_FIELD(TUPLE) BOOST_PP_TUPLE_ELEM(3, 1, TUPLE)
-#define BRIEF_PROP_NAME(TUPLE) BOOST_PP_TUPLE_ELEM(3, 2, TUPLE)
-#endif
 
 #define BRIEF_MSGPACK_PROP_CONSOLIDATE(R, SIZE, I, TUPLE) \
   _ref. BRIEF_PROP_FIELD(TUPLE) BOOST_PP_COMMA_IF(BOOST_PP_NOT_EQUAL(I, BOOST_PP_SUB(SIZE, 1)))

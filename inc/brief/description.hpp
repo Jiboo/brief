@@ -29,26 +29,6 @@
 
 namespace brief {
 
-class License {
-  BRIEF_MSGPACK_FRIENDS_INTERNAL()
-  BRIEF_JSON_FRIENDS_INTERNAL()
-
- private:
-  /** License name */
-  std::string name_;
-
-  /** Repo local path to the full license string */
-  std::string path_;
-};
-#define License_PROPERTIES \
-  (2, ( \
-    (std::string, name_, "name"), \
-    (std::string, path_, "path")) \
-  )
-
-BRIEF_MSGPACK_INTERNAL(License, License_PROPERTIES)
-BRIEF_JSON_INTERNAL(License, License_PROPERTIES)
-
 class Description {
   BRIEF_MSGPACK_FRIENDS_INTERNAL()
   BRIEF_JSON_FRIENDS_INTERNAL()
@@ -77,7 +57,7 @@ class Description {
   std::vector<std::string> publicIcons_;
 
   /// License applicable for this repo (usage of applications and/or libraries)
-  std::vector<License> licenses_;
+  std::unordered_map<std::string, std::string> licenses_;
 };
 #define Description_PROPERTIES \
   (7, ( \
@@ -87,7 +67,7 @@ class Description {
     (std::string, bugs_, "bugs"), \
     (std::string, icon_, "icon"), \
     (std::vector<std::string>, publicIcons_, "publicIcons"), \
-    (std::vector<License>, licenses_, "licenses")) \
+    (__strmap, licenses_, "licenses")) \
   )
 
 BRIEF_MSGPACK_INTERNAL(Description, Description_PROPERTIES)

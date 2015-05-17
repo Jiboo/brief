@@ -107,8 +107,6 @@ class Repository {
   Description description_;
 };
 
-using __namedtag = std::unordered_map<std::string, Tag>;
-
 #define Repository_PROPERTIES \
   (12, ( \
     (std::string, name_, "name"), \

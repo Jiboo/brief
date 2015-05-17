@@ -199,9 +199,24 @@ class Task {
   Description description_;
 };
 
-using __strmap = std::unordered_map<std::string, std::string>;
-using __namedtasks = std::unordered_map<std::string, Task>;
-using __namedtasksmap = std::map<std::string, Task>;
+#define Task_type_t_VALUES \
+  (6, ( \
+    (Task::type_t::SPECIFICATION, "SPECIFICATION"), \
+    (Task::type_t::LIBRARY, "LIBRARY"), \
+    (Task::type_t::APPLICATION, "APPLICATION"), \
+    (Task::type_t::PACKAGES, "PACKAGES"), \
+    (Task::type_t::BUNDLE, "BUNDLE"), \
+    (Task::type_t::TOOLCHAIN, "TOOLCHAIN")) \
+  )
+BRIEF_JSON_ENUM_INTERNAL(Task::type_t, Task_type_t_VALUES)
+
+#define Task_optimisation_t_VALUES \
+  (3, ( \
+    (Task::optimisation_t::NONE, "NONE"), \
+    (Task::optimisation_t::SIZE, "SIZE"), \
+    (Task::optimisation_t::SPEED, "SPEED")) \
+  )
+BRIEF_JSON_ENUM_INTERNAL(Task::optimisation_t, Task_optimisation_t_VALUES)
 
 #define Task_PROPERTIES \
   (17, ( \

@@ -18,6 +18,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <functional>
 #include <map>
 #include <sstream>
@@ -28,6 +29,8 @@
 #include <experimental/string_view>
 
 #include <boost/preprocessor.hpp>
+
+#include "brief/serial.hpp"
 
 namespace brief {
 
@@ -409,15 +412,13 @@ struct json<std::map<K, V>> {
   template<typename T> friend void json<T>::parse(Tokenizer &_tokenizer, T&); \
   template<typename T> friend void json<T>::serialize(std::ostream &_stream, const T&, int _indent);
 
-#ifndef BRIEF_PROP_TYPE
-#define BRIEF_PROP_TYPE(TUPLE) BOOST_PP_TUPLE_ELEM(3, 0, TUPLE)
-#define BRIEF_PROP_FIELD(TUPLE) BOOST_PP_TUPLE_ELEM(3, 1, TUPLE)
-#define BRIEF_PROP_NAME(TUPLE) BOOST_PP_TUPLE_ELEM(3, 2, TUPLE)
-#endif
-
 #define BRIEF_JSON_PROP_PARSE(R, ELSE, PROP) \
   BOOST_PP_EXPR_IF(ELSE, else) if (_key == BRIEF_PROP_NAME(PROP)) \
     _o. BRIEF_PROP_FIELD(PROP) = brief::parse<BRIEF_PROP_TYPE(PROP)>(_tokenizer);
+
+#define BRIEF_JSON_ENUM_PARSE(R, ELSE, ENUM) \
+  BOOST_PP_EXPR_IF(ELSE, else) if (value == BRIEF_ENUM_NAME(ENUM)) \
+    _ref = BRIEF_ENUM_VALUE(ENUM);
 
 #define BRIEF_JSON_PROP_SERIALIZE(R, SIZE, I, PROP) \
   brief::indent(_stream, _indent + 1); \
@@ -425,6 +426,11 @@ struct json<std::map<K, V>> {
   _stream << ": "; \
   brief::json<BRIEF_PROP_TYPE(PROP)>::serialize(_stream, _ref. BRIEF_PROP_FIELD(PROP), _indent + 1); \
   _stream << BOOST_PP_EXPR_IF(BOOST_PP_NOT_EQUAL(I, BOOST_PP_SUB(SIZE, 1)), ",") "\n";
+
+#define BRIEF_JSON_ENUM_SERIALIZE(R, UNUSED, ENUM) \
+  case BRIEF_ENUM_VALUE(ENUM): \
+    brief::json<std::string>::serialize(_stream, BRIEF_ENUM_NAME(ENUM), _indent + 1); \
+    break;
 
 #define BRIEF_JSON_INTERNAL(TYPE, PROPERTIES) \
   template<> \
@@ -444,6 +450,23 @@ struct json<std::map<K, V>> {
     } \
   };
 
+#define BRIEF_JSON_ENUM_INTERNAL(TYPE, VALUES) \
+  template<> \
+  struct json<TYPE> { \
+    static void parse(brief::Tokenizer &_tokenizer, TYPE &_ref) { \
+      std::string value; \
+      json<std::string>::parse(_tokenizer, value); \
+      std::transform(value.begin(), value.end(), value.begin(), ::toupper); \
+      BRIEF_JSON_ENUM_PARSE(r, 0, BOOST_PP_ARRAY_ELEM(0, VALUES)) \
+      BOOST_PP_LIST_FOR_EACH(BRIEF_JSON_ENUM_PARSE, 1, BOOST_PP_ARRAY_TO_LIST(BOOST_PP_ARRAY_POP_FRONT(VALUES))) \
+    } \
+    static void serialize(std::ostream &_stream, const TYPE &_ref, int _indent = 0) { \
+      switch (_ref) { \
+        BOOST_PP_LIST_FOR_EACH(BRIEF_JSON_ENUM_SERIALIZE, nullptr, BOOST_PP_ARRAY_TO_LIST(VALUES)) \
+      } \
+    } \
+  };
+
 }  // namespace brief
 
 #define BRIEF_JSON_FRIENDS() \
@@ -453,4 +476,9 @@ struct json<std::map<K, V>> {
 #define BRIEF_JSON(TYPE, PROPERTIES) \
   namespace brief { \
   BRIEF_JSON_INTERNAL(TYPE, PROPERTIES) \
+  }  // namespace brief
+
+#define BRIEF_JSON_ENUM(TYPE, VALUES) \
+  namespace brief { \
+  BRIEF_JSON_ENUM_INTERNAL(TYPE, VALUES) \
   }  // namespace brief
