@@ -18,30 +18,26 @@
 
 #pragma once
 
-#include <string>
-#include <vector>
+#include <boost/filesystem/path.hpp>
 
-#include <boost/filesystem.hpp>
-#include <chrono>
+#include "brief/task.hpp"
 
 namespace brief {
 
 class Context;
 
 /**
- * Implements how to drive a version control system.
+ * Class responsible for installing and removing repositories from the trunks directory.
  */
-class VCS {
+class Trunks {
  public:
-  using Factory = std::function<std::shared_ptr<VCS>(Context&, std::string)>;
+  Trunks(Context &_ctx);
 
-  virtual ~VCS() {}
-  virtual void reset() = 0;
-  virtual void checkout(const std::string &_tag) = 0;
-  virtual std::chrono::system_clock::time_point date(const std::string &_revId) = 0;
-  virtual void fillTags(std::unordered_map<std::string, Tag> &_dest) = 0;
-
-  virtual std::vector<boost::filesystem::path> diff() = 0;
+  void has(const Dependency &_dep);
+  Task retreive(const Dependency &_dep);
+  void add(...);
+  void remove(...);
+  void list(...);
 };
 
 }  // namespace brief

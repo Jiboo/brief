@@ -20,17 +20,36 @@
 
 #include <string>
 
+#include "brief/toolchain.hpp"
+#include "brief/vcs.hpp"
+
 namespace brief {
 
-Context::Context() {
+Context::Context() : builder_(*this), trunks_(*this) {
+
 }
 
 void Context::registerToolchain(const std::string &_name, const Toolchain::Factory &_factory) {
   toolchainFactories_.emplace(_name, _factory);
 }
 
+std::shared_ptr<Toolchain> Context::getToolchain(const std::string &_name) {
+  auto it = toolchainFactories_.find(_name);
+  if (it == toolchainFactories_.end())
+    throw new std::runtime_error(std::string("Toolchain ") + _name + " not registered.");
+  return it->second(*this);
+}
+
 void Context::registerVCSHandling(const std::regex &_pattern, const VCS::Factory &_factory) {
   vcsFactories_.push_back(std::make_tuple(_pattern, _factory));
+}
+
+std::shared_ptr<VCS> Context::getVCS(const std::string &_uri) {
+  for (const auto &tuple : vcsFactories_) {
+    if (std::regex_match(_uri, std::get<std::regex>(tuple)))
+      return std::get<VCS::Factory>(tuple)(*this, _uri);
+  }
+  throw new std::runtime_error(std::string("No known vcs can handle uri: ") + _uri);
 }
 
 void Context::registerVar(const std::string &_name, const std::string &_value) {

@@ -221,7 +221,7 @@ inline uint16_t read_map_header(std::istream &_stream) {
         V value; \
         msgpack<K>::read(_stream, key); \
         msgpack<V>::read(_stream, value); \
-        _ref[key] = value; \
+        _ref.emplace_hint(std::end(_ref), std::move(key), std::move(value)); \
       } \
     } \
   };
@@ -269,7 +269,7 @@ struct msgpack<std::experimental::optional<T>> {
     if (present) {
       T val;
       msgpack<T>::read(_stream, val);
-      _ref = val;
+      _ref = std::move(val);
     }
   }
 };

@@ -30,6 +30,8 @@
 #include "brief/repository.hpp"
 #include "brief/toolchain.hpp"
 #include "brief/vcs.hpp"
+#include "brief/builder.hpp"
+#include "brief/trunks.hpp"
 
 namespace brief {
 
@@ -42,6 +44,9 @@ class Context {
   void registerToolchain(const std::string &_name, const Toolchain::Factory &_factory);
   void registerVCSHandling(const std::regex &_pattern, const VCS::Factory &_factory);
 
+  std::shared_ptr<VCS> getVCS(const std::string &_uri);
+  std::shared_ptr<Toolchain> getToolchain(const std::string &_name);
+
   void registerVar(const std::string &_name, const std::string &_value);
   void registerVarPrefix(const std::string &_prefix, PrefixCallback _cb);
   std::string preprocessString(const Repository& _repo, const Task& _task, const std::string &_value);
@@ -52,6 +57,8 @@ class Context {
   std::unordered_map<std::string, PrefixCallback> varPrefixes_;
   std::unordered_map<std::string, std::string> knownVars_;
   std::vector<std::tuple<std::regex, VCS::Factory>> vcsFactories_;
+  Builder builder_;
+  Trunks trunks_;
 };
 
 }  // namespace brief

@@ -22,7 +22,7 @@
  * TODO Import <cmake script = CMakeLists.txt>
  *   Try to imports targets from a CMake config file to output a repository description.
  *     -i for an interactive
- * TODO Configure <JSON repo description> <optional tasks that needs to be enabled, as per Dependency.require = [""]>
+ * TODO Configure <optional features to be enable, prefixed by <task>: as per Dependency.require = [""]> -d <JSON repo description>
  *   Parse repo description file and merges tasks with optional experimental tasks, as well as merging inherited tasks
  *   for faster access when building. Serialize the output in binary to avoid having to unescape strings or parse
  *   fields in any order.
@@ -31,7 +31,7 @@
  *   Checks that any var is preprocessable.
  * TODO Clean <tasks to clean = (cache.all)>
  *   Remove any build system generated temporary file.
- * TODO Build <tasks to build = (cache.all)> :: <flavors to activate = (release)>
+ * TODO Build <task to build = (cache.all)>:<flavors to activate = (release)>
  *
  * TODO Test
  *

@@ -47,9 +47,9 @@ class Toolchain {
  public:
   using Factory = std::function<std::shared_ptr<Toolchain>(Context&)>;
 
-  virtual void build(const std::string &_task, const std::initializer_list<std::string> &_flavors) = 0;
-  virtual void test(const std::string &_task) = 0;
-  virtual void install(const std::string &_task) = 0;
+  virtual void build(const Task &_task, const std::initializer_list<std::string> &_flavors) = 0;
+  virtual void test(const Task &_task) = 0;
+  virtual void install(const Task &_task) = 0;
 };
 
 }  // namespace brief

@@ -30,6 +30,8 @@
 
 namespace brief {
 
+class Repository;
+
 class Dependency {
   BRIEF_MSGPACK_FRIENDS_INTERNAL()
   BRIEF_JSON_FRIENDS_INTERNAL()
@@ -40,7 +42,8 @@ class Dependency {
     std::string name_;
 
     /** Tag as per defined in dependency repo description, a list of tags either custom
-     * or mapped to repo internal tags. */
+     * or mapped to repo internal tags.
+     * Can be prefixed by comparison operator, if ommited, it defaults to repo head. */
     std::string tag_;
 
     /** Preferred linking to this library (embark the code instead of using a system shareable code)
@@ -205,6 +208,8 @@ class Task {
 
   /** General info about this task */
   Description description_;
+
+  Repository merge(const Task &_task) const;
 };
 
 #define Task_type_t_VALUES \

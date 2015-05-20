@@ -21,27 +21,29 @@
 #include <string>
 #include <vector>
 
-#include <boost/filesystem.hpp>
-#include <chrono>
+#include <boost/filesystem/path.hpp>
+
+#include "brief/repository.hpp"
 
 namespace brief {
 
 class Context;
 
 /**
- * Implements how to drive a version control system.
+ * Class responsible for parsing JSON build files, and schedule tasks building.
  */
-class VCS {
+class Builder {
  public:
-  using Factory = std::function<std::shared_ptr<VCS>(Context&, std::string)>;
+  Builder(Context &_ctx);
+  Builder(Context &_ctx, const boost::filesystem::path &_repodesc);
+  Builder(Context &_ctx, const Repository &_repo);
 
-  virtual ~VCS() {}
-  virtual void reset() = 0;
-  virtual void checkout(const std::string &_tag) = 0;
-  virtual std::chrono::system_clock::time_point date(const std::string &_revId) = 0;
-  virtual void fillTags(std::unordered_map<std::string, Tag> &_dest) = 0;
+  void build(const std::string &_task, const std::vector<std::string> &_flavors);
 
-  virtual std::vector<boost::filesystem::path> diff() = 0;
+ private:
+  void init(Context &_ctx, const boost::filesystem::path &_repodesc);
+  Repository buildCache(const boost::filesystem::path &_repodesc);
+  void init(const Repository &_repo);
 };
 
 }  // namespace brief
