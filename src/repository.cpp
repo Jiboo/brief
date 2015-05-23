@@ -16,35 +16,22 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#pragma once
+#include "brief/repository.hpp"
 
 #include <string>
-#include <vector>
-
-#include <boost/filesystem/path.hpp>
-
-#include "brief/repository.hpp"
 
 namespace brief {
 
-class Context;
+Task Repository::getTask(const std::string &_name) {
+  auto it = tasks_.find(_name);
+  if (it != tasks_.end())
+    return it->second;
 
-/**
- * Class responsible for parsing JSON build files, and schedule tasks building.
- */
-class Builder {
- public:
-  explicit Builder(Context &_ctx) : ctx_(_ctx) {}
+  it = exports_.find(_name);
+  if (it != exports_.end())
+    return it->second;
 
-  void buildCache(const boost::filesystem::path &_repodesc, const std::vector<std::string> &_flavors);
-  void loadCachedDesc();
-  void loadCachedDesc(const boost::filesystem::path &_repodesc);
-
-  void build(const std::string &_task, const std::vector<std::string> &_flavors);
-
- private:
-  Context &ctx_;
-  Repository repo_;
-};
+  throw std::out_of_range(std::string("Unknown task: ") + _name);
+}
 
 }  // namespace brief

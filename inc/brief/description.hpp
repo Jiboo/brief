@@ -34,7 +34,7 @@ class Description {
   BRIEF_JSON_FRIENDS_INTERNAL()
   BRIEF_EQUALS_FRIENDS_INTERNAL(Description)
 
- private:
+ public:
   /** Displayed name (like Google Test and not gtest)
    * Defaults to "name", being either from Task's maps keys or Repository */
   std::string title_;
@@ -63,7 +63,7 @@ class Description {
 
 #define Description_PROPERTIES \
   (7, ( \
-    (std::string, title_, "path"), \
+    (std::string, title_, "title"), \
     (std::string, summary_, "summary"), \
     (std::string, home_, "home"), \
     (std::string, bugs_, "bugs"), \

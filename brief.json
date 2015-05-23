@@ -21,7 +21,7 @@
   },
   "exports":{
     "libbrief":{
-      "type":"library",
+      "type":"lib",
       "toolchain":"clang",
       "dependencies":[
         {"name":"flatbuffers"},
@@ -39,7 +39,7 @@
       ]
     },
     "brief":{
-      "type":"application",
+      "type":"app",
       "toolchain":"clang",
       "dependencies":[
         {"name":"libbrief"}

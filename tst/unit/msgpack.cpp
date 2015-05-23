@@ -97,9 +97,9 @@ struct MsgpackType {
 };
 #define MsgpackType_enum_t_VALUES \
   (3, ( \
-    (MsgpackType::enum_t::NONE, "NONE"), \
-    (MsgpackType::enum_t::TEST, "TEST"), \
-    (MsgpackType::enum_t::TEST2, "TEST2")) \
+    (MsgpackType::enum_t::NONE, "none"), \
+    (MsgpackType::enum_t::TEST, "test"), \
+    (MsgpackType::enum_t::TEST2, "test2")) \
   )
 BRIEF_MSGPACK_ENUM(MsgpackType::enum_t, MsgpackType_enum_t_VALUES)
 
@@ -133,6 +133,9 @@ TEST(MsgPack, CustomTypes) {
 
 TEST(MsgPack, CompletePass) {
   std::ifstream ifs("brief.json");
+
+  ASSERT_TRUE(ifs.is_open());
+
   std::string source;
   ifs.seekg(0, std::ios::end);
   source.reserve(ifs.tellg());

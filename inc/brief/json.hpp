@@ -67,6 +67,9 @@ inline void throwError(int _line, int _col, const std::string &_message) {
   throw std::runtime_error(buf.str());
 }
 
+template<typename T>
+struct json;
+
 class Tokenizer {
  public:
   Tokenizer(const char *_input, const char *_end)
@@ -142,9 +145,10 @@ class Tokenizer {
     cursor_ = input_;
   }
 
+  int line_ = 0, col_ = 0;
+
  private:
   const char *input_, *cursor_, *end_;
-  int line_ = 0, col_ = 0;
 
   void skipSpaces() {
     size_t spaces = countTrim();
@@ -409,25 +413,21 @@ static void serialize_map(std::ostream &_stream, const InputIt _being, const Inp
   _stream << '}';
 }
 
-template <typename K, typename V>
-struct json<std::unordered_map<K, V>> {
-  static void parse(Tokenizer &_tokenizer, std::unordered_map<K, V> &_dest) {
-    parse_map<K, V>(_tokenizer, std::inserter(_dest, _dest.begin()));
-  }
-  static void serialize(std::ostream &_stream, const std::unordered_map<K, V> &_ref, int _indent = 0) {
-    serialize_map<K, V>(_stream, std::begin(_ref), std::end(_ref), _indent);
-  }
+#define BRIEF_JSON_BIND_MAP(CTYPE) \
+template <typename K, typename V> \
+struct json<CTYPE<K, V>> { \
+  static void parse(Tokenizer &_tokenizer, CTYPE<K, V> &_dest) { \
+    parse_map<K, V>(_tokenizer, std::inserter(_dest, _dest.begin())); \
+  } \
+  static void serialize(std::ostream &_stream, const CTYPE<K, V> &_ref, int _indent = 0) { \
+    serialize_map<K, V>(_stream, std::begin(_ref), std::end(_ref), _indent); \
+  } \
 };
 
-template <typename K, typename V>
-struct json<std::map<K, V>> {
-  static void parse(Tokenizer &_tokenizer, std::map<K, V> &_dest) {
-    parse_map<K, V>(_tokenizer, std::inserter(_dest, _dest.begin()));
-  }
-  static void serialize(std::ostream &_stream, const std::map<K, V> &_ref, int _indent = 0) {
-    serialize_map<K, V>(_stream, std::begin(_ref), std::end(_ref), _indent);
-  }
-};
+BRIEF_JSON_BIND_MAP(std::map)
+BRIEF_JSON_BIND_MAP(std::multimap)
+BRIEF_JSON_BIND_MAP(std::unordered_map)
+BRIEF_JSON_BIND_MAP(std::unordered_multimap)
 
 #define BRIEF_JSON_FRIENDS_INTERNAL() \
   template<typename T> friend void json<T>::parse(Tokenizer &_tokenizer, T&); \
@@ -462,6 +462,9 @@ struct json<std::map<K, V>> {
       parse_object<std::string>(_tokenizer, [&_tokenizer, &_o] (const std::string &_key) { \
         BRIEF_JSON_PROP_PARSE(r, 0, BOOST_PP_ARRAY_ELEM(0, PROPERTIES)) \
         BOOST_PP_LIST_FOR_EACH(BRIEF_JSON_PROP_PARSE, 1, BOOST_PP_ARRAY_TO_LIST(BOOST_PP_ARRAY_POP_FRONT(PROPERTIES))) \
+        else { \
+          throwError(_tokenizer.line_, _tokenizer.col_, std::string("Unknown object key: ") + _key) ;\
+        } \
       }); \
     } \
     static void serialize(std::ostream &_stream, const TYPE &_ref, int _indent = 0) { \
@@ -479,9 +482,12 @@ struct json<std::map<K, V>> {
     static void parse(brief::Tokenizer &_tokenizer, TYPE &_ref) { \
       std::string value; \
       json<std::string>::parse(_tokenizer, value); \
-      std::transform(value.begin(), value.end(), value.begin(), ::toupper); \
+      std::transform(value.begin(), value.end(), value.begin(), ::tolower); \
       BRIEF_JSON_ENUM_PARSE(r, 0, BOOST_PP_ARRAY_ELEM(0, VALUES)) \
       BOOST_PP_LIST_FOR_EACH(BRIEF_JSON_ENUM_PARSE, 1, BOOST_PP_ARRAY_TO_LIST(BOOST_PP_ARRAY_POP_FRONT(VALUES))) \
+      else { \
+        throwError(_tokenizer.line_, _tokenizer.col_, std::string("Unknown enum value: ") + value); \
+      } \
     } \
     static void serialize(std::ostream &_stream, const TYPE &_ref, int _indent = 0) { \
       switch (_ref) { \

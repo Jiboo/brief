@@ -2,7 +2,7 @@
   "name": "helloworld",
   "tasks": {
     "helloworld": {
-      "type": "application",
+      "type": "app",
       "toolchain": "clang",
       "sources": [
         "hello.cpp"

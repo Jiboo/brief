@@ -21,7 +21,6 @@
 namespace brief {
 
 Trunks::Trunks(Context &_ctx) {
-
 }
 
 }  // namespace brief

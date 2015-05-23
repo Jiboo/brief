@@ -32,12 +32,17 @@
 #include "brief/vcs.hpp"
 #include "brief/builder.hpp"
 #include "brief/trunks.hpp"
+#include "brief/logger.hpp"
 
 namespace brief {
 
 class Context {
  public:
-  Context();
+  Logger logger_;
+  Builder builder_;
+  Trunks trunks_;
+
+  explicit Context(Logger::level_t _level = Logger::D);
 
   using PrefixCallback = std::function<std::string(const Repository &, const Task &, const std::string &_name)>;
 
@@ -57,8 +62,6 @@ class Context {
   std::unordered_map<std::string, PrefixCallback> varPrefixes_;
   std::unordered_map<std::string, std::string> knownVars_;
   std::vector<std::tuple<std::regex, VCS::Factory>> vcsFactories_;
-  Builder builder_;
-  Trunks trunks_;
 };
 
 }  // namespace brief

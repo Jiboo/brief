@@ -53,3 +53,9 @@ TEST(ContextTests, SimpleVars) {
   EXPECT_ANY_THROW(ctx.lookupVar(repo, task2, "sym1"));
   EXPECT_ANY_THROW(ctx.lookupVar(repo, task1, "unknown"));
 }
+
+TEST(ContextTests, Builder) {
+  brief::Context ctx;
+  ctx.builder_.buildCache(boost::filesystem::path("tst") / "helloworld" / "helloworld.json", {});
+  ctx.builder_.build("helloworld", {"withDesc"});
+}

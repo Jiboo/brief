@@ -18,8 +18,12 @@
 
 #include "brief/builder.hpp"
 
+#include <algorithm>
 #include <fstream>
 #include <iostream>
+#include <map>
+#include <string>
+#include <vector>
 
 #include "brief/context.hpp"
 
@@ -27,45 +31,9 @@ namespace brief {
 
 namespace fs = boost::filesystem;
 
-Builder::Builder(Context &_ctx) {
-  for (auto file : fs::directory_iterator(fs::current_path())) {
-    if (file.path().extension() == ".json") {
-      init(_ctx, file);
-      break;
-    }
-  }
-}
-
-Builder::Builder(Context &_ctx, const fs::path &_repodesc) {
-  init(_ctx, _repodesc);
-}
-
-void Builder::init(Context &_ctx, const fs::path &_repodesc) {
-  if (!fs::is_regular_file(_repodesc))
-    throw std::runtime_error("Repo description must be a file");
-
-  const fs::path cachePath = _repodesc.string() + ".brief";
-  if(!fs::exists(cachePath)) {
-    std::cout << "caching" <<std::endl;
-    Repository repo = buildCache(_repodesc);
-    std::ofstream dst(cachePath.string());
-    msgpack<Repository>::write(dst, repo);
-    dst.close();
-    init(repo);
-  } else {
-    std::cout << "using cache" << std::endl;
-    std::ifstream src(cachePath.string());
-    Repository cache;
-    msgpack<Repository>::read(src, cache);
-    src.close();
-    init(cache);
-  }
-}
-
-Repository Builder::buildCache(const boost::filesystem::path &_repodesc) {
+void Builder::buildCache(const boost::filesystem::path &_repodesc, const std::vector<std::string> &_flavors) {
   std::ifstream src(_repodesc.string());
   std::string buf;
-  Repository result;
 
   src.seekg(0, std::ios::end);
   buf.reserve(static_cast<unsigned long>(src.tellg()));
@@ -75,11 +43,80 @@ Repository Builder::buildCache(const boost::filesystem::path &_repodesc) {
 
   Tokenizer tokenizer(std::begin(buf).base(), std::end(buf).base());
 
-  return parse<Repository>(tokenizer);
+  json<Repository>::parse(tokenizer, repo_);
+
+  // TODO Preprocess task and strings
+  //  Remove optional task if one of their dependency isn't present, merge the others
+  //  Remove disabled experimental features, pass the other in flavors
+
+  const fs::path cachePath = _repodesc.string() + ".brief";
+  std::ofstream dst(cachePath.string());
+  msgpack<int>::write(dst, BRIEF_SCHEMA_VERSION);  // brief schema version
+  msgpack<std::vector<std::string>>::write(dst, _flavors);  // configured flavors
+  msgpack<Repository>::write(dst, repo_);
+  dst.close();
 }
 
-void Builder::init(const Repository &_repo) {
-  std::cout << _repo.name_ <<std::endl;
+void Builder::loadCachedDesc(const fs::path &_repodesc) {
+  if (!fs::is_regular_file(_repodesc) || !fs::exists(_repodesc))
+    throw std::runtime_error("Repo description must be a file.");
+
+  const fs::path cachePath = _repodesc.string() + ".brief";
+
+  if (!fs::exists(cachePath))
+    throw std::runtime_error("Cache not present, probably unconfigured repo, use: \n"
+                             "\tbrief configure <flavors/experimentals to enable, prefixed by \"<task name>:\">.");
+
+  std::ifstream src(cachePath.string());
+  int version;  // brief schema version
+  msgpack<int>::read(src, version);
+  std::vector<std::string> flavors;  // configured flavors
+  msgpack<std::vector<std::string>>::read(src, flavors);
+
+  const bool obsolete = version != BRIEF_SCHEMA_VERSION;
+  const bool outdated = (fs::last_write_time(_repodesc) - fs::last_write_time(cachePath)) > 0;
+  if (outdated || obsolete) {
+    BRIEF_V(ctx_.logger_, "Cache " << cachePath << " outdated or obsolete, re-configuring...");
+    src.close();
+    fs::remove(cachePath);
+\
+    buildCache(_repodesc, flavors);
+
+    src = std::ifstream(cachePath.string());
+    msgpack<int>::read(src, version);
+    flavors.clear();
+    msgpack<std::vector<std::string>>::read(src, flavors);
+  }
+
+  try {
+    BRIEF_V(ctx_.logger_, "Cache " << cachePath << " present, using it.");
+    msgpack<Repository>::read(src, repo_);
+    src.close();
+  } catch (std::runtime_error e) {
+    fs::remove(cachePath);
+    throw std::runtime_error(std::string("Can't read cache, removed it. Caused by: ") + e.what());
+  }
+}
+
+void Builder::build(const std::string &_task, const std::vector<std::string> &_flavors) {
+  BRIEF_I(ctx_.logger_, "Building task " << _task << " with flavors: " << _flavors);
+
+  // Merge task with active flavors
+  // FIXME Cache thus merges
+  Task merged = repo_.getTask(_task);
+  std::multimap<std::string, Task> source;
+  std::swap(merged.flavors_, source);
+  for (const std::string &flavor : _flavors) {
+    auto it = source.find(flavor);
+    if (it == source.end())
+      throw std::out_of_range(std::string("No flavor known as ") + flavor);
+    merged = merged.merge(it->second);
+  }
+  BRIEF_D(ctx_.logger_, "Task: " << merged);
+
+  // FIXME Notify trunks of the dependencies, and ask for refresh (rebuild if needed)
+
+  auto toolchain = ctx_.getToolchain(merged.toolchain_);
 }
 
 }  // namespace brief

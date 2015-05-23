@@ -29,6 +29,8 @@
 
 namespace brief {
 
+#define BRIEF_SCHEMA_VERSION 1
+
 /** Used to point to a state of the repo (a combination of revision/branch/tag)
  * If you don't provide custom tags, we'll try to use the ones on the repo. */
 class Tag {
@@ -101,13 +103,15 @@ class Repository {
   std::vector<std::string> test_;
 
   /** Tasks defined locally for this file and it's dependencies */
-  std::unordered_map<std::string, Task> tasks_;
+  std::unordered_multimap<std::string, Task> tasks_;
 
   /** Tasks that are visible system wide and that can be installed */
-  std::unordered_map<std::string, Task> exports_;
+  std::unordered_multimap<std::string, Task> exports_;
 
   /** General info about the repo */
   Description description_;
+
+  Task getTask(const std::string &_name);
 };
 
 #define Repository_PROPERTIES \

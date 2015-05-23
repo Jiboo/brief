@@ -159,14 +159,14 @@ class Task {
   std::vector<Dependency> dependencies_;
 
   /** Set of tasks describing features enabled only if all of their dependencies are installed. */
-  std::map<std::string, Task> optionals_;
+  std::multimap<std::string, Task> optionals_;
 
   /** Set of tasks describing experimental features disabled by default. */
-  std::map<std::string, Task> experimental_;
+  std::multimap<std::string, Task> experimental_;
 
   /** Set of flavors describing different ways to build this task (debug/release or paid/free for example).
    * Debug/Release flavors are automagically filled by the toolchain but can be overridden. */
-  std::map<std::string, Task> flavors_;
+  std::multimap<std::string, Task> flavors_;
 
   /** List the URI of patches applied to the repo, must point to a "raw diff", not html content.
    *    - repo:<repo local path> for patches on the repo.
@@ -209,27 +209,27 @@ class Task {
   /** General info about this task */
   Description description_;
 
-  Repository merge(const Task &_task) const;
+  Task merge(const Task &_task) const;
 };
 
 #define Task_type_t_VALUES \
   (7, ( \
-    (Task::type_t::OTHER, "OTHER"), \
-    (Task::type_t::SPECIFICATION, "SPECIFICATION"), \
-    (Task::type_t::LIBRARY, "LIBRARY"), \
-    (Task::type_t::APPLICATION, "APPLICATION"), \
-    (Task::type_t::PACKAGES, "PACKAGES"), \
-    (Task::type_t::BUNDLE, "BUNDLE"), \
-    (Task::type_t::TOOLCHAIN, "TOOLCHAIN")) \
+    (Task::type_t::OTHER, "other"), \
+    (Task::type_t::SPECIFICATION, "spec"), \
+    (Task::type_t::LIBRARY, "lib"), \
+    (Task::type_t::APPLICATION, "app"), \
+    (Task::type_t::PACKAGES, "packages"), \
+    (Task::type_t::BUNDLE, "bundle"), \
+    (Task::type_t::TOOLCHAIN, "toolchain")) \
   )
 BRIEF_JSON_ENUM_INTERNAL(Task::type_t, Task_type_t_VALUES)
 BRIEF_MSGPACK_ENUM_INTERNAL(Task::type_t, Task_type_t_VALUES)
 
 #define Task_optimisation_t_VALUES \
   (3, ( \
-    (Task::optimisation_t::NONE, "NONE"), \
-    (Task::optimisation_t::SIZE, "SIZE"), \
-    (Task::optimisation_t::SPEED, "SPEED")) \
+    (Task::optimisation_t::NONE, "none"), \
+    (Task::optimisation_t::SIZE, "size"), \
+    (Task::optimisation_t::SPEED, "speed")) \
   )
 BRIEF_JSON_ENUM_INTERNAL(Task::optimisation_t, Task_optimisation_t_VALUES)
 BRIEF_MSGPACK_ENUM_INTERNAL(Task::optimisation_t, Task_optimisation_t_VALUES)

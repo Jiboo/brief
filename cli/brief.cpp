@@ -42,7 +42,16 @@
  * TODO Install/uninstall export.
  */
 
+namespace fs = boost::filesystem;
+
 int main(int, char **) {
   brief::Context ctx;
+
+  for (auto file : fs::directory_iterator(fs::current_path())) {
+    if (file.path().extension() == ".json") {
+      break;
+    }
+  }
+
   return 0;
 }

@@ -31,7 +31,7 @@ class Context;
  */
 class Trunks {
  public:
-  Trunks(Context &_ctx);
+  explicit Trunks(Context &_ctx);
 
   void has(const Dependency &_dep);
   Task retreive(const Dependency &_dep);

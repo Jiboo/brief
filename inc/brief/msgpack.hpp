@@ -193,7 +193,7 @@ void write_map(std::ostream &_stream, Iter _begin, uint16_t _size) {
 inline uint16_t read_map_header(std::istream &_stream) {
   auto c = _stream.get();
   if (c != 0xDE) {
-    std::stringstream error; \
+    std::stringstream error;
     error << "expected string, found : " << std::hex << c;
     throw std::runtime_error(error.str());
   } else {
@@ -226,8 +226,10 @@ inline uint16_t read_map_header(std::istream &_stream) {
     } \
   };
 
-BRIEF_MSGPACK_BIND_MAP(std::map)
+BRIEF_MSGPACK_BIND_MAP(std::map)  // FIXME Maybe each should have a custom prefix?
+BRIEF_MSGPACK_BIND_MAP(std::multimap)
 BRIEF_MSGPACK_BIND_MAP(std::unordered_map)
+BRIEF_MSGPACK_BIND_MAP(std::unordered_multimap)
 
 template <typename Tuple, typename F, std::size_t ...Indices>
 void for_each_impl(Tuple&& tuple, F&& f, std::index_sequence<Indices...>) {
@@ -241,6 +243,7 @@ void for_each(Tuple&& tuple, F&& f) {
   for_each_impl(std::forward<Tuple>(tuple), std::forward<F>(f), std::make_index_sequence<N>{});
 }
 
+// FIXME Need to store them in a msgpack ext
 template<typename... TParams>
 struct msgpack<std::tuple<TParams...>> {
   static void write(std::ostream &_stream, const std::tuple<TParams...> &_ref) {

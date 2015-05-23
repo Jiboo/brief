@@ -68,9 +68,9 @@ struct JsonType {
 
 #define JsonType_enum_t_VALUES \
   (3, ( \
-    (JsonType::enum_t::NONE, "NONE"), \
-    (JsonType::enum_t::TEST, "TEST"), \
-    (JsonType::enum_t::TEST2, "TEST2")) \
+    (JsonType::enum_t::NONE, "none"), \
+    (JsonType::enum_t::TEST, "test"), \
+    (JsonType::enum_t::TEST2, "test2")) \
   )
 BRIEF_JSON_ENUM(JsonType::enum_t, JsonType_enum_t_VALUES)
 
@@ -83,7 +83,7 @@ BRIEF_JSON_ENUM(JsonType::enum_t, JsonType_enum_t_VALUES)
 BRIEF_JSON(JsonType, JsonType_PROPERTIES)
 
 TEST(JsonReader, CustomTypes) {
-  const char *test = "{\"a\": 42, \"b\": 3.14, \"e\": \"TEST\"}";
+  const char *test = "{\"a\": 42, \"b\": 3.14, \"e\": \"test\"}";
   brief::Tokenizer tokenizer(test, test + strlen(test));
 
   JsonType expected = {42, 3.14, JsonType::enum_t::TEST};

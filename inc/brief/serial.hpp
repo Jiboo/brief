@@ -31,8 +31,8 @@ class Task;
 
 using __namedtags = std::unordered_map<std::string, Tag>;
 using __strmap = std::unordered_map<std::string, std::string>;
-using __namedtasks = std::unordered_map<std::string, Task>;
-using __namedtasksmap = std::map<std::string, Task>;
+using __namedtasks = std::unordered_multimap<std::string, Task>;
+using __namedtasksmap = std::multimap<std::string, Task>;
 
 #define BRIEF_PROP_TYPE(TUPLE) BOOST_PP_TUPLE_ELEM(3, 0, TUPLE)
 #define BRIEF_PROP_FIELD(TUPLE) BOOST_PP_TUPLE_ELEM(3, 1, TUPLE)

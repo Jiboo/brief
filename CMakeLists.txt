@@ -22,6 +22,7 @@ set(LIBBRIEF_HEADERS
   inc/brief/task.hpp
   inc/brief/repository.hpp
 
+  inc/brief/logger.hpp
   inc/brief/context.hpp
   inc/brief/vcs.hpp
   inc/brief/toolchain.hpp
@@ -34,6 +35,7 @@ set(LIBBRIEF_SOURCES
   src/builder.cpp
   src/trunks.cpp
   src/task.cpp
+  src/repository.cpp
 )
 add_library(libbrief ${LIBBRIEF_SOURCES} ${LIBBRIEF_HEADERS})
 link_libraries(libbrief ${Boost_FILESYSTEM_LIBRARY_RELEASE} ${Boost_SYSTEM_LIBRARY_RELEASE})

@@ -2,7 +2,7 @@
   "name": "helloworld",
   "tasks": {
     "libhello": {
-      "type": "library",
+      "type": "lib",
       "toolchain": "clang",
       "sources": [
         "library.cpp"
@@ -12,7 +12,7 @@
       ]
     },
     "helloworld": {
-      "type": "application",
+      "type": "app",
       "toolchain": "clang",
       "dependencies": [
         {"name": "libhello"}

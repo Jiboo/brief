@@ -19,14 +19,16 @@
 #include "brief/context.hpp"
 
 #include <string>
+#include <iostream>
 
 #include "brief/toolchain.hpp"
 #include "brief/vcs.hpp"
+#include "brief/logger.hpp"
 
 namespace brief {
 
-Context::Context() : builder_(*this), trunks_(*this) {
-
+Context::Context(Logger::level_t _level)
+    : logger_(std::cout, _level), builder_(*this), trunks_(*this) {
 }
 
 void Context::registerToolchain(const std::string &_name, const Toolchain::Factory &_factory) {
@@ -36,7 +38,7 @@ void Context::registerToolchain(const std::string &_name, const Toolchain::Facto
 std::shared_ptr<Toolchain> Context::getToolchain(const std::string &_name) {
   auto it = toolchainFactories_.find(_name);
   if (it == toolchainFactories_.end())
-    throw new std::runtime_error(std::string("Toolchain ") + _name + " not registered.");
+    throw std::runtime_error(std::string("Toolchain ") + _name + " not registered.");
   return it->second(*this);
 }
 
@@ -49,7 +51,7 @@ std::shared_ptr<VCS> Context::getVCS(const std::string &_uri) {
     if (std::regex_match(_uri, std::get<std::regex>(tuple)))
       return std::get<VCS::Factory>(tuple)(*this, _uri);
   }
-  throw new std::runtime_error(std::string("No known vcs can handle uri: ") + _uri);
+  throw std::runtime_error(std::string("No known vcs can handle uri: ") + _uri);
 }
 
 void Context::registerVar(const std::string &_name, const std::string &_value) {
