@@ -23,7 +23,7 @@
 
 #include <boost/filesystem/path.hpp>
 
-#include "brief/repository.hpp"
+#include "brief/model/repository.hpp"
 
 namespace brief {
 
@@ -34,6 +34,8 @@ class Context;
  */
 class Builder {
  public:
+  static constexpr auto CACHE_SUFFIX = ".cache";
+
   explicit Builder(Context &_ctx) : ctx_(_ctx) {}
 
   void buildCache(const boost::filesystem::path &_repodesc, const std::vector<std::string> &_flavors);

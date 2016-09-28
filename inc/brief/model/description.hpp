@@ -24,14 +24,13 @@
 #include <unordered_map>
 #include <vector>
 
+#include "brief/serial.hpp"
 #include "brief/msgpack.hpp"
 #include "brief/json.hpp"
 
 namespace brief {
 
 class Description {
-  BRIEF_MSGPACK_FRIENDS_INTERNAL()
-  BRIEF_JSON_FRIENDS_INTERNAL()
   BRIEF_EQUALS_FRIENDS_INTERNAL(Description)
 
  public:
@@ -43,6 +42,9 @@ class Description {
    * Max size = 120 - sizeof(title) - sizeof(name) + 5
    * (name being either from Task's maps keys or Repository) */
   std::string summary_;
+
+  /// License applicable for this repo (usage of applications and/or libraries)
+  std::unordered_map<std::string, std::string> licenses_;
 
   /** Homepage URL. */
   std::string home_;
@@ -56,20 +58,17 @@ class Description {
   /** URL to icon image files (preferably PNG)
    * You can add extra descriptors matching component 4. of https://html.spec.whatwg.org/#image-candidate-string */
   std::vector<std::string> publicIcons_;
-
-  /// License applicable for this repo (usage of applications and/or libraries)
-  std::unordered_map<std::string, std::string> licenses_;
 };
 
 #define Description_PROPERTIES \
   (7, ( \
     (std::string, title_, "title"), \
     (std::string, summary_, "summary"), \
+    (__strmap, licenses_, "licenses"), \
     (std::string, home_, "home"), \
     (std::string, bugs_, "bugs"), \
     (std::string, icon_, "icon"), \
-    (std::vector<std::string>, publicIcons_, "publicIcons"), \
-    (__strmap, licenses_, "licenses")) \
+    (std::vector<std::string>, publicIcons_, "publicIcons")) \
   )
 
 BRIEF_MSGPACK_INTERNAL(Description, Description_PROPERTIES)

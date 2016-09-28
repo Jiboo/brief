@@ -16,14 +16,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "brief/context.hpp"
 
 #include <string>
 #include <iostream>
 
-#include "brief/toolchain.hpp"
-#include "brief/vcs.hpp"
-#include "brief/logger.hpp"
+#include "brief/context.hpp"
 
 namespace brief {
 
@@ -62,23 +59,23 @@ void Context::registerVarPrefix(const std::string &_prefix, PrefixCallback _cb) 
   varPrefixes_.emplace(_prefix, _cb);
 }
 
-std::string Context::preprocessString(const Repository &_activeRepo,
-                                      const Task &_activeTask,
+std::string Context::preprocessString(const Repository &_repo,
+                                      const Task &_task,
                                       const std::string &_value) {
   // TODO Check for vars in the string
   return _value;
 }
 
-std::string Context::lookupVar(const Repository &_activeRepo, const Task &_activeTask, const std::string &_name) {
-  auto symbols = _activeTask.symbols_;
+std::string Context::lookupVar(const Repository &_repo, const Task &_task, const std::string &_name) {
+  auto symbols = _task.symbols_;
   auto symbol = symbols.find(_name.c_str());
   if (symbol != symbols.end())
-    return preprocessString(_activeRepo, _activeTask, symbol->second);
+    return preprocessString(_repo, _task, symbol->second);
 
-  auto constants = _activeRepo.constants_;
+  auto constants = _repo.constants_;
   auto constant = constants.find(_name.c_str());
   if (constant != constants.end())
-    return preprocessString(_activeRepo, _activeTask, constant->second);
+    return preprocessString(_repo, _task, constant->second);
 
   auto known = knownVars_.find(_name);
   if (known != knownVars_.end())
@@ -89,7 +86,7 @@ std::string Context::lookupVar(const Repository &_activeRepo, const Task &_activ
     auto prefix = _name.substr(0, offset);
     auto it = varPrefixes_.find(prefix);
     if (it != varPrefixes_.end()) {
-      return it->second(_activeRepo, _activeTask, _name.substr(offset + 2));
+      return it->second(_repo, _task, _name.substr(offset + 2));
     }
   }
 

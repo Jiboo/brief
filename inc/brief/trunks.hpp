@@ -20,7 +20,7 @@
 
 #include <boost/filesystem/path.hpp>
 
-#include "brief/task.hpp"
+#include "brief/model/task.hpp"
 
 namespace brief {
 

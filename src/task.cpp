@@ -16,12 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "brief/context.hpp"
-
-#include <string>
-
-#include "brief/repository.hpp"
-#include "brief/logger.hpp"
+#include "brief/model/task.hpp"
 
 namespace brief {
 

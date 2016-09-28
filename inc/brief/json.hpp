@@ -34,6 +34,8 @@
 
 namespace brief {
 
+constexpr auto JSON_INLINE_THRESHOLD = 64;
+
 struct token_t {
   enum type_t : char {
     ARRAY_OPEN, ARRAY_CLOSE,
@@ -311,17 +313,20 @@ struct json<std::vector<T>> {
     _stream << '[';
 
     // Pre-serialize a compact form to check if could be inlined.
-    std::stringstream buf;
+    std::ostringstream buf;
     auto end = std::end(_ref);
     auto last = end - 1;
     for (auto it = std::begin(_ref); it != end; it++) {
       json<T>::serialize(buf, *it, _indent + 1);
       if (it != last)
         buf << ", ";
+
+      if (buf.tellp() > JSON_INLINE_THRESHOLD)
+        break;
     }
     auto bufstr = buf.str();
 
-    if (bufstr.size() < 64) {
+    if (bufstr.size() < JSON_INLINE_THRESHOLD && bufstr.find('\n') == std::string::npos) {
       _stream << bufstr;
     } else {
       _stream << '\n';
@@ -331,9 +336,11 @@ struct json<std::vector<T>> {
         if (it != last) {
           _stream << ",\n";
           indent(_stream, _indent + 1);
+        } else {
+          _stream << '\n';
+          indent(_stream, _indent);
         }
       }
-      indent(_stream, _indent);
     }
 
     _stream << ']';
@@ -371,10 +378,12 @@ template <typename K, typename V, class InputIt>
 static void serialize_map(std::ostream &_stream, const InputIt _being, const InputIt _end, int _indent = 0) {
   _stream << '{';
 
-  // Pre-serialize a compact form to check if could be inlined.
-  std::stringstream buf;
+  // Use to compare fields to default values
+  const V defaultValue {};
+
+  // Pre-serialize a compact form to check if it could be inlined.
+  std::ostringstream buf;
   for (auto it = _being; it != _end; ) {
-    const V defaultValue;  // Don't serialize if default values, useful for Task and Description
     if (it->second != defaultValue) {
       json<K>::serialize(buf, it->first, _indent + 1);
       buf << ": ";
@@ -384,16 +393,18 @@ static void serialize_map(std::ostream &_stream, const InputIt _being, const Inp
     } else {
       ++it;
     }
+
+    if (buf.tellp() > JSON_INLINE_THRESHOLD)
+      break;
   }
   auto bufstr = buf.str();
 
-  if (bufstr.size() < 64) {
+  if (bufstr.size() < JSON_INLINE_THRESHOLD && bufstr.find('\n') == std::string::npos) {
     _stream << bufstr;
   } else {
     _stream << '\n';
     indent(_stream, _indent + 1);
     for (auto it = _being; it != _end;) {
-      const V defaultValue;  // Don't serialize if default values, useful for Task and Description
       // FIXME Defaults to random stuff for primitives, idem in BRIEF_JSON_PROP_SERIALIZE
       if (it->second != defaultValue) {
         json<K>::serialize(_stream, it->first, _indent + 1);
@@ -402,12 +413,14 @@ static void serialize_map(std::ostream &_stream, const InputIt _being, const Inp
         if (++it != _end) {
           _stream << ",\n";
           indent(_stream, _indent + 1);
+        } else {
+          _stream << '\n';
+          indent(_stream, _indent);
         }
       } else {
         ++it;
       }
     }
-    indent(_stream, _indent);
   }
 
   _stream << '}';
@@ -429,10 +442,6 @@ BRIEF_JSON_BIND_MAP(std::multimap)
 BRIEF_JSON_BIND_MAP(std::unordered_map)
 BRIEF_JSON_BIND_MAP(std::unordered_multimap)
 
-#define BRIEF_JSON_FRIENDS_INTERNAL() \
-  template<typename T> friend void json<T>::parse(Tokenizer &_tokenizer, T&); \
-  template<typename T> friend void json<T>::serialize(std::ostream &_stream, const T&, int _indent);
-
 #define BRIEF_JSON_PROP_PARSE(R, ELSE, PROP) \
   BOOST_PP_EXPR_IF(ELSE, else) if (_key == BRIEF_PROP_NAME(PROP)) \
     _o. BRIEF_PROP_FIELD(PROP) = brief::parse<BRIEF_PROP_TYPE(PROP)>(_tokenizer);
@@ -442,13 +451,25 @@ BRIEF_JSON_BIND_MAP(std::unordered_multimap)
     _ref = BRIEF_ENUM_VALUE(ENUM);
 
 #define BRIEF_JSON_PROP_SERIALIZE(R, SIZE, I, PROP) \
-  if (_ref. BRIEF_PROP_FIELD(PROP) != BRIEF_PROP_TYPE(PROP) ()) { \
+  if (_ref. BRIEF_PROP_FIELD(PROP) != defaultValue. BRIEF_PROP_FIELD(PROP)) { \
     brief::indent(_stream, _indent + 1); \
     brief::json<std::string>::serialize(_stream, BRIEF_PROP_NAME(PROP), _indent + 1); \
     _stream << ": "; \
     brief::json<BRIEF_PROP_TYPE(PROP)>::serialize(_stream, _ref. BRIEF_PROP_FIELD(PROP), _indent + 1); \
-    _stream << BOOST_PP_EXPR_IF(BOOST_PP_NOT_EQUAL(I, BOOST_PP_SUB(SIZE, 1)), ",") "\n"; \
+    _stream << ",\n"; \
   }
+
+// #pragma disable goodpractices
+
+#define BRIEF_JSON_PROP_SERIALIZE_INLINE(R, SIZE, I, PROP) \
+  if (_ref. BRIEF_PROP_FIELD(PROP) != defaultValue. BRIEF_PROP_FIELD(PROP)) { \
+    brief::json<std::string>::serialize(buf, BRIEF_PROP_NAME(PROP), _indent + 1); \
+    buf << ": "; \
+    brief::json<BRIEF_PROP_TYPE(PROP)>::serialize(buf, _ref. BRIEF_PROP_FIELD(PROP), _indent + 1); \
+    buf << ","; \
+  } \
+  if (buf.tellp() > JSON_INLINE_THRESHOLD) \
+    goto abort_inline;
 
 #define BRIEF_JSON_ENUM_SERIALIZE(R, UNUSED, ENUM) \
   case BRIEF_ENUM_VALUE(ENUM): \
@@ -468,11 +489,26 @@ BRIEF_JSON_BIND_MAP(std::unordered_multimap)
       }); \
     } \
     static void serialize(std::ostream &_stream, const TYPE &_ref, int _indent = 0) { \
-      _stream << "{\n"; \
-      BOOST_PP_LIST_FOR_EACH_I(BRIEF_JSON_PROP_SERIALIZE, \
+      _stream << '{'; \
+      const TYPE defaultValue {}; \
+      std::ostringstream buf; \
+      BOOST_PP_LIST_FOR_EACH_I(BRIEF_JSON_PROP_SERIALIZE_INLINE, \
                                BOOST_PP_ARRAY_SIZE(PROPERTIES), \
                                BOOST_PP_ARRAY_TO_LIST(PROPERTIES)) \
-      brief::indent(_stream, _indent); _stream << "}"; \
+    abort_inline: \
+      auto bufstr = buf.str(); \
+      if (bufstr.size() < JSON_INLINE_THRESHOLD && bufstr.find('\n') == std::string::npos) { \
+        bufstr.resize(bufstr.size() - 1); \
+        _stream << bufstr; \
+      } else { \
+        _stream << '\n'; \
+        BOOST_PP_LIST_FOR_EACH_I(BRIEF_JSON_PROP_SERIALIZE, \
+                                 BOOST_PP_ARRAY_SIZE(PROPERTIES), \
+                                 BOOST_PP_ARRAY_TO_LIST(PROPERTIES)) \
+        _stream.seekp(-2, std::ios_base::end); _stream << '\n'; \
+        brief::indent(_stream, _indent); \
+      } \
+      _stream << "}"; \
     } \
   };
 
@@ -497,10 +533,6 @@ BRIEF_JSON_BIND_MAP(std::unordered_multimap)
   };
 
 }  // namespace brief
-
-#define BRIEF_JSON_FRIENDS() \
-  template<typename T> friend void brief::json<T>::parse(brief::json::Tokenizer &_tokenizer, T&); \
-  template<typename T> friend void brief::json<T>::serialize(std::ostream &_stream, const T&, int _indent);
 
 #define BRIEF_JSON(TYPE, PROPERTIES) \
   namespace brief { \

@@ -310,15 +310,7 @@ struct msgpack<std::experimental::optional<T>> {
     } \
   };
 
-#define BRIEF_MSGPACK_FRIENDS_INTERNAL() \
-  template<typename T> friend void msgpack<T>::write(std::ostream&, const T&); \
-  template<typename T> friend void msgpack<T>::read(std::istream&, T&);
-
 }  // namespace brief
-
-#define BRIEF_MSGPACK_FRIENDS() \
-  template<typename T> friend void brief::msgpack<T>::write(std::ostream&, const T&); \
-  template<typename T> friend void brief::msgpack<T>::read(std::istream&, T&);
 
 #define BRIEF_MSGPACK(TYPE, PROPERTIES) \
   namespace brief { \

@@ -36,7 +36,7 @@ void Builder::buildCache(const boost::filesystem::path &_repodesc, const std::ve
   std::string buf;
 
   src.seekg(0, std::ios::end);
-  buf.reserve(static_cast<unsigned long>(src.tellg()));
+  buf.reserve(static_cast<size_t>(src.tellg()));
   src.seekg(0, std::ios::beg);
   buf.assign((std::istreambuf_iterator<char>(src)), std::istreambuf_iterator<char>());
   src.close();
@@ -49,7 +49,7 @@ void Builder::buildCache(const boost::filesystem::path &_repodesc, const std::ve
   //  Remove optional task if one of their dependency isn't present, merge the others
   //  Remove disabled experimental features, pass the other in flavors
 
-  const fs::path cachePath = _repodesc.string() + ".brief";
+  const fs::path cachePath = _repodesc.string() + CACHE_SUFFIX;
   std::ofstream dst(cachePath.string());
   msgpack<int>::write(dst, BRIEF_SCHEMA_VERSION);  // brief schema version
   msgpack<std::vector<std::string>>::write(dst, _flavors);  // configured flavors
@@ -61,7 +61,7 @@ void Builder::loadCachedDesc(const fs::path &_repodesc) {
   if (!fs::is_regular_file(_repodesc) || !fs::exists(_repodesc))
     throw std::runtime_error("Repo description must be a file.");
 
-  const fs::path cachePath = _repodesc.string() + ".brief";
+  const fs::path cachePath = _repodesc.string() + CACHE_SUFFIX;
 
   if (!fs::exists(cachePath))
     throw std::runtime_error("Cache not present, probably unconfigured repo, use: \n"
@@ -92,7 +92,7 @@ void Builder::loadCachedDesc(const fs::path &_repodesc) {
     BRIEF_V(ctx_.logger_, "Cache " << cachePath << " present, using it.");
     msgpack<Repository>::read(src, repo_);
     src.close();
-  } catch (std::runtime_error e) {
+  } catch (const std::runtime_error &e) {
     fs::remove(cachePath);
     throw std::runtime_error(std::string("Can't read cache, removed it. Caused by: ") + e.what());
   }
@@ -112,7 +112,7 @@ void Builder::build(const std::string &_task, const std::vector<std::string> &_f
       throw std::out_of_range(std::string("No flavor known as ") + flavor);
     merged = merged.merge(it->second);
   }
-  BRIEF_D(ctx_.logger_, "Task: " << merged);
+  BRIEF_D(ctx_.logger_, "Task merged with flavors: " << merged);
 
   // FIXME Notify trunks of the dependencies, and ask for refresh (rebuild if needed)
 

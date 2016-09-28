@@ -27,7 +27,7 @@
 
 #include <boost/filesystem/path.hpp>
 
-#include "brief/repository.hpp"
+#include "brief/model/repository.hpp"
 #include "brief/toolchain.hpp"
 #include "brief/vcs.hpp"
 #include "brief/builder.hpp"

@@ -25,7 +25,7 @@
 
 #include <gtest/gtest.h>
 #include <brief/json.hpp>
-#include <brief/repository.hpp>
+#include <brief/model/repository.hpp>
 
 TEST(MsgPack, Primitives) {
   const int kCount = 1000;
@@ -132,8 +132,7 @@ TEST(MsgPack, CustomTypes) {
 }
 
 TEST(MsgPack, CompletePass) {
-  std::ifstream ifs("brief.json");
-
+  std::ifstream ifs("brief.brief");  // A bit awkward, but only for this project
   ASSERT_TRUE(ifs.is_open());
 
   std::string source;
@@ -161,6 +160,11 @@ TEST(MsgPack, CompletePass) {
   // CPP -> JSON
   std::stringstream serialized;
   brief::json<brief::Repository>::serialize(serialized, read);
+
+  /*std::ofstream ofs("tstMsgPackCompletePassOutput.brief");
+  ASSERT_TRUE(ofs.is_open());
+  ofs << serialized.rdbuf();
+  ofs.close();*/
 
   // JSON -> CPP 2
   std::string serialized_source = serialized.str();

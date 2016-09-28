@@ -25,16 +25,16 @@
 #include <unordered_map>
 #include <vector>
 
+#include "brief/serial.hpp"
 #include "brief/msgpack.hpp"
-#include "brief/description.hpp"
+#include "brief/json.hpp"
+#include "brief/model/description.hpp"
 
 namespace brief {
 
 class Repository;
 
 class Dependency {
-  BRIEF_MSGPACK_FRIENDS_INTERNAL()
-  BRIEF_JSON_FRIENDS_INTERNAL()
   BRIEF_EQUALS_FRIENDS_INTERNAL(Dependency)
 
  public:
@@ -71,8 +71,6 @@ BRIEF_EQUALS_INTERNAL(Dependency, Dependency_PROPERTIES)
 /** Filters are used to enable a task if only certain criteria are met.
  * If two tasks with the same name collide, they must have different filters. */
 class TaskFilters {
-  BRIEF_MSGPACK_FRIENDS_INTERNAL()
-  BRIEF_JSON_FRIENDS_INTERNAL()
   BRIEF_EQUALS_FRIENDS_INTERNAL(TaskFilters)
 
  public:
@@ -102,11 +100,9 @@ BRIEF_JSON_INTERNAL(TaskFilters, TaskFilters_PROPERTIES)
 BRIEF_EQUALS_INTERNAL(TaskFilters, TaskFilters_PROPERTIES)
 
 class Task {
-  BRIEF_MSGPACK_FRIENDS_INTERNAL()
-  BRIEF_JSON_FRIENDS_INTERNAL()
   BRIEF_EQUALS_FRIENDS_INTERNAL(Task)
 
- private:
+ public:
   /** Inherits from another task.
    * Maps&Lists fields from *the specified task* will be merged into *this* one.
    * For other fields:
@@ -114,7 +110,6 @@ class Task {
    *   - Fields defined in *the specified task* and not in *this* task are copied. */
   std::string inherits_;
 
- public:
   enum type_t : uint8_t {
     /** Used by codegen tasks, or file copies */
     OTHER,

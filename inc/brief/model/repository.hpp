@@ -24,8 +24,11 @@
 #include <unordered_map>
 #include <vector>
 
-#include "brief/description.hpp"
-#include "brief/task.hpp"
+#include "brief/serial.hpp"
+#include "brief/msgpack.hpp"
+#include "brief/json.hpp"
+#include "brief/model/description.hpp"
+#include "task.hpp"
 
 namespace brief {
 
@@ -34,8 +37,6 @@ namespace brief {
 /** Used to point to a state of the repo (a combination of revision/branch/tag)
  * If you don't provide custom tags, we'll try to use the ones on the repo. */
 class Tag {
-  BRIEF_MSGPACK_FRIENDS_INTERNAL()
-  BRIEF_JSON_FRIENDS_INTERNAL()
   BRIEF_EQUALS_FRIENDS_INTERNAL(Tag)
 
  public:
@@ -63,8 +64,6 @@ BRIEF_JSON_INTERNAL(Tag, Tag_PROPERTIES)
 BRIEF_EQUALS_INTERNAL(Tag, Tag_PROPERTIES)
 
 class Repository {
-  BRIEF_MSGPACK_FRIENDS_INTERNAL()
-  BRIEF_JSON_FRIENDS_INTERNAL()
   BRIEF_EQUALS_FRIENDS_INTERNAL(Repository)
 
  private:
@@ -79,6 +78,9 @@ class Repository {
 
   /** Repository URL, will be used as input to the CVS clone operation */
   std::string url_;
+
+  /** General info about the repo */
+  Description description_;
 
   /** Constants referenced in this repo, you can use thus values in any strings of this file. */
   std::unordered_map<std::string, std::string> constants_;
@@ -108,9 +110,6 @@ class Repository {
   /** Tasks that are visible system wide and that can be installed */
   std::unordered_multimap<std::string, Task> exports_;
 
-  /** General info about the repo */
-  Description description_;
-
   Task getTask(const std::string &_name);
 };
 
@@ -118,6 +117,7 @@ class Repository {
   (12, ( \
     (std::string, name_, "name"), \
     (std::string, url_, "url"), \
+    (Description, description_, "description"), \
     (__strmap, constants_, "constants"), \
     (__namedtags, tags_, "tags"), \
     (uint32_t, repoSize_, "repoSize"), \
@@ -126,8 +126,7 @@ class Repository {
     (std::vector<std::string>, all_, "all"), \
     (std::vector<std::string>, test_, "test"), \
     (__namedtasks, tasks_, "tasks"), \
-    (__namedtasks, exports_, "exports"), \
-    (Description, description_, "description")) \
+    (__namedtasks, exports_, "exports")) \
   )
 
 BRIEF_MSGPACK_INTERNAL(Repository, Repository_PROPERTIES)

@@ -16,9 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "brief/repository.hpp"
-
-#include <string>
+#include "brief/model/repository.hpp"
 
 namespace brief {
 

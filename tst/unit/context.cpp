@@ -16,9 +16,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <gtest/gtest.h>
-
 #include <string>
+
+#include <gtest/gtest.h>
 
 #include "brief/context.hpp"
 
@@ -57,5 +57,5 @@ TEST(ContextTests, SimpleVars) {
 TEST(ContextTests, Builder) {
   brief::Context ctx;
   ctx.builder_.buildCache(boost::filesystem::path("tst") / "helloworld" / "helloworld.json", {});
-  ctx.builder_.build("helloworld", {"withDesc"});
+  ctx.builder_.build("helloworld", {});  // TODO clang toolchain..
 }
