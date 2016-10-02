@@ -25,7 +25,9 @@
 #include <sstream>
 #include <string>
 #include <tuple>
-#include <typeinfo>
+#ifdef BRIEF_RTTI
+#  include <typeinfo>
+#endif
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -44,13 +46,19 @@ namespace brief {
  *  - Don't handle fixnums and assumes 16bit size containers
  */
 
+#ifndef BRIEF_RTTI
+#define BRIEF_MSGPACK_TYPENAME(TYPE) #TYPE
+#else
+#define BRIEF_MSGPACK_TYPENAME(TYPE) typeid(TYPE).name()
+#endif
+
 template <typename T>
 struct msgpack {
   static void write(std::ostream &_stream, const T &_ref) {
-    throw std::runtime_error(std::string("can't put a ") + typeid(T).name());
+    throw std::runtime_error(std::string("can't put a ") + BRIEF_MSGPACK_TYPENAME(T));
   }
   static void read(std::istream &_stream, T &_ref) {
-    throw std::runtime_error(std::string("can't peek a ") + typeid(T).name());
+    throw std::runtime_error(std::string("can't peek a ") + BRIEF_MSGPACK_TYPENAME(T));
   }
 };
 

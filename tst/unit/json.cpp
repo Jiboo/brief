@@ -52,11 +52,12 @@ TEST(JsonReader, Tokenizer) {
 }
 
 TEST(JsonReader, Parser) {
-  const std::string test = "42 3.14 \"test\" [1, 2, 4] {\"a\": 1, \"b\": 2}";
+  const std::string test = "42 3.14 \"\" \"test\" [1, 2, 4] {\"a\": 1, \"b\": 2}";
   brief::Tokenizer tok1(test.data(), test.data() + test.size());
 
   ASSERT_EQ(42, brief::parse<int>(tok1));
   ASSERT_FLOAT_EQ(3.14, brief::parse<float>(tok1));
+  ASSERT_EQ("", brief::parse<std::string>(tok1));
   ASSERT_EQ("test", brief::parse<std::string>(tok1));
 
   std::vector<int> v = brief::parse<std::vector<int>>(tok1);
@@ -64,14 +65,27 @@ TEST(JsonReader, Parser) {
   ASSERT_EQ(2, v[1]);
   ASSERT_EQ(4, v[2]);
 
+  // TODO std::array
+
   std::unordered_map<std::string, int> m = brief::parse<std::unordered_map<std::string, int>>(tok1);
   ASSERT_EQ(1, m["a"]);
   ASSERT_EQ(2, m["b"]);
 
-  const std::string escaping = R"end("\u0001\u0012\u0008\u0016\"\\")end";
+  const std::string escaping = R"end(["a\nb"] "" "\"" "\u0024" "\u00A2" "\uD834\uDD1E" "\"\\/\b\f\n\r\t" "
+" "\\" "\u0001 \u0000 ")end";
   brief::Tokenizer tok3(escaping.data(), escaping.data() + escaping.size());
 
-  ASSERT_EQ("\x01\x12\x08\x16\"\\", brief::parse<std::string>(tok3));
+  ASSERT_EQ("a\nb", brief::parse<std::vector<std::string>>(tok3)[0]);
+  ASSERT_EQ("", brief::parse<std::string>(tok3));
+  ASSERT_EQ("\"", brief::parse<std::string>(tok3));
+  ASSERT_EQ("$", brief::parse<std::string>(tok3));
+  ASSERT_EQ("\xC2\xA2", brief::parse<std::string>(tok3));
+  ASSERT_EQ("\xF0\x9D\x84\x9E", brief::parse<std::string>(tok3));
+  ASSERT_EQ("\"\\/\b\f\n\r\t", brief::parse<std::string>(tok3));
+  ASSERT_EQ("\n", brief::parse<std::string>(tok3));
+  ASSERT_EQ("\\", brief::parse<std::string>(tok3));
+  const char ref[] = {0x01, ' ', 0x00, ' '};
+  ASSERT_EQ(std::experimental::string_view(ref, sizeof(ref)), brief::parse<std::string>(tok3));
 }
 
 struct JsonType {

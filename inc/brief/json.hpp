@@ -25,17 +25,26 @@
 #include <sstream>
 #include <string>
 #include <thread>
+#ifdef BRIEF_RTTI
+#  include <typeinfo>
+#endif
 #include <unordered_map>
 #include <vector>
 #include <experimental/string_view>
+#include <experimental/optional>
 
+#include <boost/locale.hpp>
 #include <boost/preprocessor.hpp>
 
 #include "brief/serial.hpp"
 
 namespace brief {
 
+#ifndef BRIEF_RTTI
 #define BRIEF_JSON_TYPENAME(TYPE) #TYPE
+#else
+#define BRIEF_JSON_TYPENAME(TYPE) typeid(TYPE).name()
+#endif
 
 constexpr auto JSON_INLINE_THRESHOLD = 64;
 
@@ -85,7 +94,8 @@ class Tokenizer {
   }
 
   token_t next() {
-    auto result = poll();
+    token_t result = pollCache_.value_or(poll());
+    pollCache_ = std::experimental::optional<token_t> {};  // FIXME: My impl don't have reset
     const size_t size = result.view_.size();
     col_ += size;
     cursor_ += size;
@@ -132,6 +142,7 @@ class Tokenizer {
       throwError(line_, col_, "unexpected end of input");
     }
     result.view_ = std::experimental::string_view(start, count);
+    pollCache_ = result;
     return result;
   }
 
@@ -139,7 +150,7 @@ class Tokenizer {
     token_t token = next();
     if (token.type_ != except) {
       std::stringstream buf;
-      buf << "excepted " << getTokenTypeSymbol(except) << " found " << token.view_;
+      buf << "excepted '" << getTokenTypeSymbol(except) << "' found '" << token.view_ << "'";
       throwError(token.line_, token.col_, buf.str());
     }
     return token;
@@ -153,6 +164,7 @@ class Tokenizer {
 
  private:
   const char *input_, *cursor_, *end_;
+  std::experimental::optional<token_t> pollCache_;
 
   void skipSpaces() {
     size_t spaces = countTrim();
@@ -213,8 +225,13 @@ class Tokenizer {
     const char *cur = start + 1;
     while (cur < end_) {
       char ccur = *cur;
-      if (ccur == '"' && *(cur - 1) != '\\') {
-        break;
+      if (ccur == '"') {
+        if (*(cur - 1) != '\\') {
+          break;
+        } else {
+          if (cur - start > 2 && *(cur - 2) == '\\')
+            break;
+        }
       } else if (ccur == '\\') {
         tok.escaped_ = true;
       }
@@ -223,7 +240,7 @@ class Tokenizer {
     return cur - start + 1;
   }
 
-  bool isNumberChar(int _c) {
+  inline bool isNumberChar(int _c) {
     return isdigit(_c) || _c == '-' || _c == '.' || _c == 'e' || _c == 'E' || _c == '+';
   }
 
@@ -257,41 +274,44 @@ T parse(Tokenizer &_tokenizer) {
 }
 
 // TODO Check that atoi result would fit in _dest
-#define BRIEF_JSON_BIND_INT(CTYPE) \
+#define BRIEF_JSON_BIND_INT(CTYPE, FUNC) \
   template <> \
   struct json<CTYPE> { \
     static void parse(Tokenizer &_tokenizer, CTYPE &_dest) { \
       token_t token = _tokenizer.expect(token_t::type_t::NUMBER); \
-      _dest = atoi(std::string(token.view_.data(), token.view_.size()).c_str()); \
+      _dest = static_cast<CTYPE>(std::FUNC(token.view_.begin(), nullptr, 10)); \
     } \
     static void serialize(std::ostream &_stream, const CTYPE &_ref, int _indent = 0) { \
       _stream << _ref; \
     } \
   };
 
-BRIEF_JSON_BIND_INT(uint8_t)
-BRIEF_JSON_BIND_INT(uint16_t)
-BRIEF_JSON_BIND_INT(uint32_t)
-BRIEF_JSON_BIND_INT(uint64_t)
-BRIEF_JSON_BIND_INT(int8_t)
-BRIEF_JSON_BIND_INT(int16_t)
-BRIEF_JSON_BIND_INT(int32_t)
-BRIEF_JSON_BIND_INT(int64_t)
+BRIEF_JSON_BIND_INT(int8_t, strtol)
+BRIEF_JSON_BIND_INT(int16_t, strtol)
+BRIEF_JSON_BIND_INT(int32_t, strtol)
+BRIEF_JSON_BIND_INT(int64_t, strtol)
+BRIEF_JSON_BIND_INT(long long, strtoll)
+BRIEF_JSON_BIND_INT(uint8_t, strtoul)
+BRIEF_JSON_BIND_INT(uint16_t, strtoul)
+BRIEF_JSON_BIND_INT(uint32_t, strtoul)
+BRIEF_JSON_BIND_INT(uint64_t, strtoul)
+BRIEF_JSON_BIND_INT(unsigned long long, strtoull)
 
-#define BRIEF_JSON_BIND_FLOAT(CTYPE) \
+#define BRIEF_JSON_BIND_FLOAT(CTYPE, FUNC) \
   template <> \
   struct json<CTYPE> { \
     static void parse(Tokenizer &_tokenizer, CTYPE &_dest) { \
       token_t token = _tokenizer.expect(token_t::type_t::NUMBER); \
-      _dest = atof(std::string(token.view_.data(), token.view_.size()).c_str()); \
+      _dest = std::FUNC(token.view_.begin(), nullptr); \
     } \
     static void serialize(std::ostream &_stream, const CTYPE &_ref, int _indent = 0) { \
       _stream << _ref; \
     } \
   };
 
-BRIEF_JSON_BIND_FLOAT(float)
-BRIEF_JSON_BIND_FLOAT(double)
+BRIEF_JSON_BIND_FLOAT(float, strtof)
+BRIEF_JSON_BIND_FLOAT(double, strtod)
+BRIEF_JSON_BIND_FLOAT(long double, strtold)
 
 inline std::string json_escape(const std::experimental::string_view &_str) {
   std::string result;
@@ -330,10 +350,51 @@ inline std::string json_escape(const std::experimental::string_view &_str) {
   return result;
 }
 
+inline char16_t json_unescape_parse(const token_t &_tok, const char *_cur) {
+  char buff[4];
+  std::copy_n(_cur, 4, buff);
+  char16_t conv = 0;
+  for (auto i = 0; i < 4; ++i) {
+    conv <<= 4;
+    char hexChar = buff[i];
+    if (hexChar >= '0' && hexChar <= '9')
+      conv |= hexChar - '0';
+    else if (hexChar >= 'a' && hexChar <= 'f')
+      conv |= hexChar - 'a' + 0xA;
+    else if (hexChar >= 'A' && hexChar <= 'F')
+      conv |= hexChar - 'A' + 0xA;
+    else
+      throwError(_tok.line_, _tok.col_, std::string("invalid char in escape sequence: ") + hexChar);
+  }
+  return conv;
+}
+
+inline size_t json_unescape_utf32(const token_t &_tok, const char *_cur, std::string &_result) {
+  if (std::experimental::string_view {_cur + 4, 2} != "\\u")
+    throwError(_tok.line_, _tok.col_, std::string("expected another unicode escape sequence for utf32 char"));
+
+  char16_t code[2];
+  code[0] = json_unescape_parse(_tok, _cur);
+  code[1] = json_unescape_parse(_tok, _cur + 6);
+  auto conv = boost::locale::conv::utf_to_utf<char, char16_t>(code, code + 2);
+  _result += conv;
+  return 9;
+}
+
+inline size_t json_unescape_utf16(const token_t &_tok, const char *_cur, std::string &_result) {
+  char16_t code = json_unescape_parse(_tok, _cur);
+  if (code < 0x80) {
+    _result.push_back(static_cast<char>(code & 0xFF));
+  } else {
+    _result += boost::locale::conv::utf_to_utf<char, char16_t>(&code, &code + 1);
+  }
+  return 3;
+}
+
 inline std::string json_unescape(const token_t &_tok) {
   std::string result;
   const char *start = _tok.view_.data() + 1;
-  const char *end = _tok.view_.data() + _tok.view_.size() - 2;
+  const char *end = _tok.view_.data() + _tok.view_.size() - 1;
   result.reserve(end - start);
   const char *cur = start;
   while (cur != end) {
@@ -347,30 +408,28 @@ inline std::string json_unescape(const token_t &_tok) {
         case '\\':
           result.push_back('\\');
           break;
+        case 'b':
+          result.push_back('\b');
+          break;
+        case 'f':
+          result.push_back('\f');
+          break;
         case 'n':
           result.push_back('\n');
           break;
+        case 'r':
+          result.push_back('\r');
+          break;
+        case 't':
+          result.push_back('\t');
+          break;
         case 'u': {
-          cur++;
-          char buff[4];
-          std::copy_n(cur, 4, buff);
-          char16_t conv = 0;
-          for (auto i = 0; i < 4; ++i) {
-            conv <<= 4;
-            char hexChar = buff[i];
-            if (hexChar >= '0' && hexChar <= '9')
-              conv |= hexChar - '0';
-            else if (hexChar >= 'a' && hexChar <= 'f')
-              conv |= hexChar - 'a' + 0xA;
-            else if (hexChar >= 'A' && hexChar <= 'F')
-              conv |= hexChar - 'a' + 0xA;
-            else
-              throwError(_tok.line_, _tok.col_, std::string("invalid char in escape sequence: ") + hexChar);
+          ccur = *(++cur);
+          if (ccur == '8' || ccur == '9' || (ccur >= 'A' && ccur <= 'F')) {
+            cur += json_unescape_utf32(_tok, cur, result);
+          } else {
+            cur += json_unescape_utf16(_tok, cur, result);
           }
-          if (conv >= 0x20)
-            throwError(_tok.line_, _tok.col_, std::string("unsupported escape sequence: ") + std::to_string(conv));
-          cur += 3;
-          result.push_back(static_cast<char>(conv & 0xFF));
         } break;
         default:
           throwError(_tok.line_, _tok.col_, std::string("unexpected escape sequence: ") + *cur);
