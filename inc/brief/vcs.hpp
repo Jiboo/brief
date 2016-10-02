@@ -18,11 +18,11 @@
 
 #pragma once
 
+#include <chrono>
 #include <string>
 #include <vector>
 
 #include <boost/filesystem.hpp>
-#include <chrono>
 
 namespace brief {
 

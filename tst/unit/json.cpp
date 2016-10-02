@@ -16,43 +16,62 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "brief/json.hpp"
-
-#include <string>
-#include <vector>
-
 #include <gtest/gtest.h>
 
-TEST(JsonReader, Tokenizer) {
-  const char *input = "0\n\n\rlol\t   \t\"test\" 0.484e9 {}[]";
-  brief::Tokenizer tokenizer(input, input + strlen(input));
+#include "brief/json.hpp"
 
-  ASSERT_EQ(brief::token_t::type_t::NUMBER, tokenizer.next().type_);
-  ASSERT_EQ(brief::token_t::type_t::IDENTIFIER, tokenizer.next().type_);
-  ASSERT_EQ(brief::token_t::type_t::STRING, tokenizer.next().type_);
-  ASSERT_EQ(brief::token_t::type_t::NUMBER, tokenizer.next().type_);
-  ASSERT_EQ(brief::token_t::type_t::OBJECT_OPEN, tokenizer.next().type_);
-  ASSERT_EQ(brief::token_t::type_t::OBJECT_CLOSE, tokenizer.next().type_);
-  ASSERT_EQ(brief::token_t::type_t::ARRAY_OPEN, tokenizer.next().type_);
-  ASSERT_EQ(brief::token_t::type_t::ARRAY_CLOSE, tokenizer.next().type_);
+TEST(JsonReader, Tokenizer) {
+  const std::string trivial = "0\n\n\rlol\t   \t\"test\" 0.484e9 {}[]";
+  brief::Tokenizer tok1(trivial.data(), trivial.data() + trivial.size());
+
+  ASSERT_EQ(brief::token_t::type_t::NUMBER, tok1.next().type_);
+  ASSERT_EQ(brief::token_t::type_t::IDENTIFIER, tok1.next().type_);
+  ASSERT_EQ(brief::token_t::type_t::STRING, tok1.next().type_);
+  ASSERT_EQ(brief::token_t::type_t::NUMBER, tok1.next().type_);
+  ASSERT_EQ(brief::token_t::type_t::OBJECT_OPEN, tok1.next().type_);
+  ASSERT_EQ(brief::token_t::type_t::OBJECT_CLOSE, tok1.next().type_);
+  ASSERT_EQ(brief::token_t::type_t::ARRAY_OPEN, tok1.next().type_);
+  ASSERT_EQ(brief::token_t::type_t::ARRAY_CLOSE, tok1.next().type_);
+
+  const std::string special = R"special("escaping\nin\nstring" "✓" // single line comments
+/* multi line
+   comments */ 42
+)special";
+
+  brief::Tokenizer tok2(special.data(), special.data() + special.size());
+
+  auto escaped = tok2.next();
+  ASSERT_EQ(brief::token_t::type_t::STRING, escaped.type_);
+  ASSERT_TRUE(escaped.escaped_);
+
+  auto utf8 = tok2.next();
+  ASSERT_EQ(brief::token_t::type_t::STRING, utf8.type_);
+  ASSERT_EQ(std::string("\"✓\""), utf8.view_);
+
+  ASSERT_EQ(brief::token_t::type_t::NUMBER, tok2.next().type_);
 }
 
 TEST(JsonReader, Parser) {
-  const char *test = "42 3.14 \"test\" [1, 2, 4] {\"a\": 1, \"b\": 2}";
-  brief::Tokenizer tokenizer(test, test + strlen(test));
+  const std::string test = "42 3.14 \"test\" [1, 2, 4] {\"a\": 1, \"b\": 2}";
+  brief::Tokenizer tok1(test.data(), test.data() + test.size());
 
-  ASSERT_EQ(42, brief::parse<int>(tokenizer));
-  ASSERT_FLOAT_EQ(3.14, brief::parse<float>(tokenizer));
-  ASSERT_EQ("test", brief::parse<std::string>(tokenizer));
+  ASSERT_EQ(42, brief::parse<int>(tok1));
+  ASSERT_FLOAT_EQ(3.14, brief::parse<float>(tok1));
+  ASSERT_EQ("test", brief::parse<std::string>(tok1));
 
-  std::vector<int> v = brief::parse<std::vector<int>>(tokenizer);
+  std::vector<int> v = brief::parse<std::vector<int>>(tok1);
   ASSERT_EQ(1, v[0]);
   ASSERT_EQ(2, v[1]);
   ASSERT_EQ(4, v[2]);
 
-  std::unordered_map<std::string, int> m = brief::parse<std::unordered_map<std::string, int>>(tokenizer);
+  std::unordered_map<std::string, int> m = brief::parse<std::unordered_map<std::string, int>>(tok1);
   ASSERT_EQ(1, m["a"]);
   ASSERT_EQ(2, m["b"]);
+
+  const std::string escaping = R"end("\u0001\u0012\u0008\u0016\"\\")end";
+  brief::Tokenizer tok3(escaping.data(), escaping.data() + escaping.size());
+
+  ASSERT_EQ("\x01\x12\x08\x16\"\\", brief::parse<std::string>(tok3));
 }
 
 struct JsonType {

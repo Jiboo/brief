@@ -19,11 +19,12 @@
 #pragma once
 
 #include <algorithm>
+#include <chrono>
 #include <functional>
 #include <map>
 #include <sstream>
 #include <string>
-#include <typeinfo>
+#include <thread>
 #include <unordered_map>
 #include <vector>
 #include <experimental/string_view>
@@ -33,6 +34,8 @@
 #include "brief/serial.hpp"
 
 namespace brief {
+
+#define BRIEF_JSON_TYPENAME(TYPE) #TYPE
 
 constexpr auto JSON_INLINE_THRESHOLD = 64;
 
@@ -44,7 +47,7 @@ struct token_t {
     STRING, NUMBER, IDENTIFIER
   } type_;
   int line_, col_;
-  bool escaped_ = false;  // true if string has any escaped characters (can't use as string_view)
+  bool escaped_ = false;
   std::experimental::string_view view_;
 };
 
@@ -82,7 +85,6 @@ class Tokenizer {
   }
 
   token_t next() {
-    skipSpaces();
     auto result = poll();
     const size_t size = result.view_.size();
     col_ += size;
@@ -115,7 +117,7 @@ class Tokenizer {
         count = countNumber();
         break;
       case 't': case 'f': case 'n':  // keywords
-      default:  // FIXME Unsupported in strict json
+      default:
         if (!isprint(*start)) {
           throwError(line_, col_, std::string("unexpected caracter: '") + *start + "'");
         }
@@ -164,8 +166,6 @@ class Tokenizer {
     const char *cur = start;
     while (cur != end_) {
       switch (*cur) {
-        default:
-          return cur - start;
         case ' ': case '\t':
           col_++;
           cur++;
@@ -177,9 +177,26 @@ class Tokenizer {
         case '\r':
           cur++;
           continue;
+        case '/': {
+          char next = *(cur + 1);
+          if (next == '/') {
+            while (*cur != '\n') {
+              cur++;
+            }
+            cur++;
+            continue;
+          } else if (next == '*') {
+            while (*cur != '*' || *(cur + 1) != '/')
+              cur++;
+            cur += 2;
+            continue;
+          }
+        }
+        default:
+          return cur - start;
       }
     }
-    return (size_t) -1;  // Signal eof
+    return (size_t) - 1;  // Signal eof
   }
 
   size_t countIdentifier() {
@@ -193,11 +210,14 @@ class Tokenizer {
 
   size_t countString(token_t &tok) {
     const char *start = cursor_;
-    const char *cur = start;
-    const char prev = *cur++;
-    while (*cur != '"' && prev != '\\' && cur < end_) {
-      if (*cur == '\\')
+    const char *cur = start + 1;
+    while (cur < end_) {
+      char ccur = *cur;
+      if (ccur == '"' && *(cur - 1) != '\\') {
+        break;
+      } else if (ccur == '\\') {
         tok.escaped_ = true;
+      }
       cur++;
     }
     return cur - start + 1;
@@ -222,7 +242,7 @@ template <typename T>
 struct json {
   static void parse(Tokenizer &_tokenizer, T &_ref) {
     auto tok = _tokenizer.next();
-    throwError(tok.line_, tok.col_, std::string("can't parse a ") + typeid(T).name());
+    throwError(tok.line_, tok.col_, std::string("can't parse a ") + BRIEF_JSON_TYPENAME(T));
   }
   static void serialize(std::ostream &_stream, const T &_ref, int _indent = 0) {
     _stream << _ref;
@@ -273,16 +293,112 @@ BRIEF_JSON_BIND_INT(int64_t)
 BRIEF_JSON_BIND_FLOAT(float)
 BRIEF_JSON_BIND_FLOAT(double)
 
+inline std::string json_escape(const std::experimental::string_view &_str) {
+  std::string result;
+  result.reserve(_str.size());
+  const char *cur = _str.begin();
+  const char *end = _str.end();
+  while (cur != end) {
+    char ccur = *cur;
+    if (ccur == '"') {
+      result += "\\\"";
+    } else if (ccur == '\\') {
+      result += "\\\\";
+    } else if (ccur == '/') {
+      result += "\\/";
+    } else if (ccur == '\b') {
+      result += "\\b";
+    } else if (ccur == '\f') {
+      result += "\\f";
+    } else if (ccur == '\n') {
+      result += "\\n";
+    } else if (ccur == '\r') {
+      result += "\\r";
+    } else if (ccur == '\t') {
+      result += "\\t";
+    } else if (ccur < 0x20) {
+      result += "\\u00";
+      char tmp = ccur >> 4;
+      result.push_back(tmp < 0xA ? tmp + '0' : tmp + 'a');
+      tmp = ccur & static_cast<char>(0xF);
+      result.push_back(tmp < 0xA ? tmp + '0' : tmp + 'a');
+    } else {
+      result.push_back(ccur);
+    }
+    cur++;
+  }
+  return result;
+}
+
+inline std::string json_unescape(const token_t &_tok) {
+  std::string result;
+  const char *start = _tok.view_.data() + 1;
+  const char *end = _tok.view_.data() + _tok.view_.size() - 2;
+  result.reserve(end - start);
+  const char *cur = start;
+  while (cur != end) {
+    char ccur = *cur;
+    if (ccur == '\\') {
+      cur++;
+      switch (*cur) {
+        case '"':
+          result.push_back('"');
+          break;
+        case '\\':
+          result.push_back('\\');
+          break;
+        case 'n':
+          result.push_back('\n');
+          break;
+        case 'u': {
+          cur++;
+          char buff[4];
+          std::copy_n(cur, 4, buff);
+          char16_t conv = 0;
+          for (auto i = 0; i < 4; ++i) {
+            conv <<= 4;
+            char hexChar = buff[i];
+            if (hexChar >= '0' && hexChar <= '9')
+              conv |= hexChar - '0';
+            else if (hexChar >= 'a' && hexChar <= 'f')
+              conv |= hexChar - 'a' + 0xA;
+            else if (hexChar >= 'A' && hexChar <= 'F')
+              conv |= hexChar - 'a' + 0xA;
+            else
+              throwError(_tok.line_, _tok.col_, std::string("invalid char in escape sequence: ") + hexChar);
+          }
+          if (conv >= 0x20)
+            throwError(_tok.line_, _tok.col_, std::string("unsupported escape sequence: ") + std::to_string(conv));
+          cur += 3;
+          result.push_back(static_cast<char>(conv & 0xFF));
+        } break;
+        default:
+          throwError(_tok.line_, _tok.col_, std::string("unexpected escape sequence: ") + *cur);
+      }
+    } else {
+      result.push_back(*cur);
+    }
+    cur++;
+  }
+  return result;
+}
+
 template <>
 struct json<std::string> {
   static void parse(Tokenizer &_tokenizer, std::string &_dest) {
     token_t token = _tokenizer.expect(token_t::type_t::STRING);
-    // TODO Unescape
-    _dest.assign(token.view_.data() + 1, token.view_.size() - 2);  // offsets to remove quote characters
+    if (!token.escaped_) {
+      _dest.assign(token.view_.data() + 1, token.view_.size() - 2);  // offsets to remove quote characters
+    } else {
+      _dest = json_unescape(token);
+    }
   }
   static void serialize(std::ostream &_stream, const std::string &_ref, int _indent = 0) {
-    // TODO Escaping
-    _stream << '"' << _ref << '"';
+    if (_ref.find('\\') == std::string::npos) {
+      _stream << '"' << _ref << '"';
+    } else {
+      _stream << '"' << json_escape(_ref) << '"';
+    }
   }
 };
 

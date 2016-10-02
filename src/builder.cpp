@@ -16,15 +16,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "brief/builder.hpp"
-
-#include <algorithm>
 #include <fstream>
 #include <iostream>
-#include <map>
-#include <string>
-#include <vector>
 
+#include "brief/builder.hpp"
 #include "brief/context.hpp"
 
 namespace brief {
@@ -79,7 +74,7 @@ void Builder::loadCachedDesc(const fs::path &_repodesc) {
     BRIEF_V(ctx_.logger_, "Cache " << cachePath << " outdated or obsolete, re-configuring...");
     src.close();
     fs::remove(cachePath);
-\
+
     buildCache(_repodesc, flavors);
 
     src = std::ifstream(cachePath.string());
@@ -116,7 +111,8 @@ void Builder::build(const std::string &_task, const std::vector<std::string> &_f
 
   // FIXME Notify trunks of the dependencies, and ask for refresh (rebuild if needed)
 
-  auto toolchain = ctx_.getToolchain(merged.toolchain_);
+  // auto toolchain = ctx_.getToolchain(merged.toolchain_);
+  // toolchain->build(merged, _flavors);
 }
 
 }  // namespace brief

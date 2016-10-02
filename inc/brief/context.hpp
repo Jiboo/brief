@@ -54,8 +54,8 @@ class Context {
 
   void registerVar(const std::string &_name, const std::string &_value);
   void registerVarPrefix(const std::string &_prefix, PrefixCallback _cb);
-  std::string preprocessString(const Repository& _repo, const Task& _task, const std::string &_value);
-  std::string lookupVar(const Repository& _repo, const Task& _task, const std::string &_name);
+  std::string preprocessString(const Repository &_repo, const Task &_task, const std::string &_value);
+  std::string lookupVar(const Repository &_repo, const Task &_task, const std::string &_name);
 
  private:
   std::unordered_map<std::string, Toolchain::Factory> toolchainFactories_;

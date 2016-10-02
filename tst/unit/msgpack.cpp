@@ -16,16 +16,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "brief/msgpack.hpp"
-
 #include <algorithm>
+#include <chrono>
 #include <fstream>
-#include <string>
-#include <vector>
 
 #include <gtest/gtest.h>
-#include <brief/json.hpp>
-#include <brief/model/repository.hpp>
+
+#include "brief/model/repository.hpp"
+#include "brief/logger.hpp"
+#include "brief/msgpack.hpp"
+#include "brief/json.hpp"
 
 TEST(MsgPack, Primitives) {
   const int kCount = 1000;
@@ -132,6 +132,7 @@ TEST(MsgPack, CustomTypes) {
 }
 
 TEST(MsgPack, CompletePass) {
+  auto before = std::chrono::steady_clock::now();
   std::ifstream ifs("brief.brief");  // A bit awkward, but only for this project
   ASSERT_TRUE(ifs.is_open());
 
@@ -143,28 +144,43 @@ TEST(MsgPack, CompletePass) {
   ifs.close();
 
   // JSON -> CPP
+  auto fread = std::chrono::steady_clock::now();
   brief::Tokenizer tokenizer(std::begin(source).base(), std::end(source).base());
   brief::Repository repo = brief::parse<brief::Repository>(tokenizer);
+  auto jpar = std::chrono::steady_clock::now();
 
   // CPP -> MSGPACK
   std::stringstream dest;
   brief::msgpack<brief::Repository>::write(dest, repo);
-  std::stringstream input;
+  auto mser = std::chrono::steady_clock::now();
 
   // MSGPACK -> CPP
   brief::Repository read;
   brief::msgpack<brief::Repository>::read(dest, read);
-
-  ASSERT_EQ(repo, read);
+  auto mpar = std::chrono::steady_clock::now();
 
   // CPP -> JSON
   std::stringstream serialized;
   brief::json<brief::Repository>::serialize(serialized, read);
+  auto jser = std::chrono::steady_clock::now();
 
-  /*std::ofstream ofs("tstMsgPackCompletePassOutput.brief");
+  ASSERT_EQ(repo, read);
+
+  std::ofstream ofs("tstMsgPackCompletePassOutput.brief");
   ASSERT_TRUE(ofs.is_open());
   ofs << serialized.rdbuf();
-  ofs.close();*/
+  ofs.close();
+  auto fwrite = std::chrono::steady_clock::now();
+
+  using brief::operator<<;
+  brief::Logger log {std::cout, brief::Logger::D};
+  BRIEF_D(log, "file read " << (fread - before));
+  BRIEF_D(log, "JSON parse " << (jpar - fread));
+  BRIEF_D(log, "MSGPACK serialize " << (mser - jpar));
+  BRIEF_D(log, "MSGPACK parse " << (mpar - mser));
+  BRIEF_D(log, "JSON serialize " << (jser - mpar));
+  BRIEF_D(log, "Full pass in " << (jser - fread));
+  BRIEF_D(log, "file write " << (fwrite - jser));
 
   // JSON -> CPP 2
   std::string serialized_source = serialized.str();

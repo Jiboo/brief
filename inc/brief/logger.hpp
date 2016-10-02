@@ -37,7 +37,7 @@ namespace brief {
 #define BRIEF_D(LOGGER, OPS) do { LOGGER.d() << OPS << std::endl; } while (false)
 #endif
 
-#define BRIEF_OS_APPEND_MAP(CTYPE) \
+#define BRIEF_LOGGER_APPEND_MAP(CTYPE) \
   template <typename K, typename V> \
   inline std::ostream& operator<<(std::ostream &_out, const CTYPE<K, V> &_v) { \
     std::stringstream buf; \
@@ -45,12 +45,12 @@ namespace brief {
     return _out << buf.str(); \
   }
 
-BRIEF_OS_APPEND_MAP(std::map)
-BRIEF_OS_APPEND_MAP(std::multimap)
-BRIEF_OS_APPEND_MAP(std::unordered_map)
-BRIEF_OS_APPEND_MAP(std::unordered_multimap)
+BRIEF_LOGGER_APPEND_MAP(std::map)
+BRIEF_LOGGER_APPEND_MAP(std::multimap)
+BRIEF_LOGGER_APPEND_MAP(std::unordered_map)
+BRIEF_LOGGER_APPEND_MAP(std::unordered_multimap)
 
-#define BRIEF_OS_APPEND_VEC(CTYPE) \
+#define BRIEF_LOGGER_APPEND_VEC(CTYPE) \
   template <typename T> \
   inline std::ostream& operator<<(std::ostream &_out, const CTYPE<T> &_v) { \
     std::stringstream buf; \
@@ -58,27 +58,44 @@ BRIEF_OS_APPEND_MAP(std::unordered_multimap)
     return _out << buf.str(); \
   }
 
-BRIEF_OS_APPEND_VEC(std::vector)
-BRIEF_OS_APPEND_VEC(std::list)
-BRIEF_OS_APPEND_VEC(std::set)
+BRIEF_LOGGER_APPEND_VEC(std::vector)
+BRIEF_LOGGER_APPEND_VEC(std::list)
+BRIEF_LOGGER_APPEND_VEC(std::set)
 
-#define BRIEF_OS_APPEND_TYPE(CTYPE) \
+#define BRIEF_LOGGER_APPEND_TYPE(CTYPE) \
+  class CTYPE; \
   inline std::ostream& operator<<(std::ostream &_out, const CTYPE &_v) { \
-    std::stringstream buf; \
-    json<CTYPE>::serialize(buf, _v); \
-    return _out << buf.str(); \
+    json<CTYPE>::serialize(_out, _v); return _out; \
   }
 
-class Repository;
-class Description;
-class Task;
-class Dependency;
-class TaskFilters;
-BRIEF_OS_APPEND_TYPE(Repository)
-BRIEF_OS_APPEND_TYPE(Description)
-BRIEF_OS_APPEND_TYPE(Task)
-BRIEF_OS_APPEND_TYPE(Dependency)
-BRIEF_OS_APPEND_TYPE(TaskFilters)
+BRIEF_LOGGER_APPEND_TYPE(Repository)
+BRIEF_LOGGER_APPEND_TYPE(Description)
+BRIEF_LOGGER_APPEND_TYPE(Task)
+BRIEF_LOGGER_APPEND_TYPE(Dependency)
+BRIEF_LOGGER_APPEND_TYPE(TaskFilters)
+
+template<typename Rep, typename Period>
+inline std::ostream& operator<<(std::ostream &_out, const std::chrono::duration<Rep, Period> &_v) {
+  const auto sec = std::chrono::duration_cast<std::chrono::seconds>(_v);
+  if (sec.count() > 10) {
+    return _out << sec.count() << "s";
+  } else {
+    const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(_v);
+    if (ms.count() > 10) {
+      return _out << ms.count() << "ms";
+    } else {
+      const auto µs = std::chrono::duration_cast<std::chrono::microseconds>(_v);
+      if (µs.count() > 10) {
+        return _out << µs.count() << "µs";
+      } else {
+        const auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(_v);
+        if (ns.count() > 10)
+          return _out << ns.count() << "ns";
+      }
+    }
+  }
+  return _out;
+}
 
 /**
  * Class responsible for logging messages.

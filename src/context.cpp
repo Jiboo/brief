@@ -17,7 +17,6 @@
  */
 
 
-#include <string>
 #include <iostream>
 
 #include "brief/context.hpp"
@@ -68,12 +67,12 @@ std::string Context::preprocessString(const Repository &_repo,
 
 std::string Context::lookupVar(const Repository &_repo, const Task &_task, const std::string &_name) {
   auto symbols = _task.symbols_;
-  auto symbol = symbols.find(_name.c_str());
+  auto symbol = symbols.find(_name);
   if (symbol != symbols.end())
     return preprocessString(_repo, _task, symbol->second);
 
   auto constants = _repo.constants_;
-  auto constant = constants.find(_name.c_str());
+  auto constant = constants.find(_name);
   if (constant != constants.end())
     return preprocessString(_repo, _task, constant->second);
 
